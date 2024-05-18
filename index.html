@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>EFS HackFS Prototype</title>
+    <script>
+        const getParentTopic = async (parentId) => {
+
+            // Default in "subfirst" topic
+            if (parentId == "") {
+                parentId = "0xc73103baa0bf6b375a1291a2ea40cc8b6dc1c99c1959126fe73f616ef5404161";
+            }
+
+            const endpoint = 'https://sepolia.easscan.org/graphql';
+
+            const query = `
+                query Attestation($where: AttestationWhereUniqueInput!) {
+                    attestation(where: $where) {
+                        decodedDataJson
+                        refUID
+                    }
+                }
+            `;
+
+            const variables = {
+                where: {
+                    id: parentId
+                }
+            };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: query,
+                    variables: variables
+                })
+            });
+
+            const data = await response.json();
+            var parent = data.data.attestation.refUID;
+
+            if (parent != '0x0000000000000000000000000000000000000000000000000000000000000000') {
+                return await getParentTopic(parent) + "/" + JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
+            } else {
+                return "";
+            }
+        };
+
+        const navigateTopic = async () => {
+            var topic = document.getElementById("search").value;
+            document.getElementById("currentTopic").innerHTML = "Topic " + await getParentTopic(topic);
+        }
+    </script>
+  </head>
+  <body>
+    <h1>EFS Topic Browser</h1>
+    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="navigateTopic();">Go</button></p>
+    <h2 id="currentTopic"></h2>
+  </body>
+</html>
