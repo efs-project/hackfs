@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>EFS HackFS Prototype</title>
+    <script src="app.js"></script>
+    <script>
+        const loadTopic = async (topicId) => {
+            document.getElementById("topicHeader").innerHTML = await getParentTopics(topicId);
+            document.getElementById("topicInfo").innerHTML = await loadTopicList(topicId);
+        }
+
+        const search = async () => {
+            var topic = document.getElementById("search").value;
+            loadTopic(topic);
+        }
+    </script>
+  </head>
+  <body onload="loadTopic('0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce');">
+    <h1>EFS Topic Browser</h1>
+    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <button id="connect" onclick="connectWallet();">Connect Wallet</button></p>
+    <h2 id="topicHeader"></h2>
+    <div id="topicInfo"></div>
+  </body>
+</html>
