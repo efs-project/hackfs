@@ -1,5 +1,17 @@
 {
   "devDependencies": {
-    "parcel": "^2.12.0"
+    "buffer": "^6.0.3",
+    "parcel": "^2.12.0",
+    "process": "^0.11.10"
+  },
+  "dependencies": {
+    "@ethereum-attestation-service/eas-sdk": "^2.1.4",
+    "ethers": "^6.12.1"
+  },
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build",
+    "dev": "npx parcel src/index.html"
   }
 }

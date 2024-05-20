@@ -3,22 +3,30 @@
   <head>
     <meta charset="utf-8"/>
     <title>EFS HackFS Prototype</title>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
     <script>
+        var currentTopic;
+        var parentTopic;
         const loadTopic = async (topicId) => {
             document.getElementById("topicHeader").innerHTML = await getParentTopics(topicId);
             document.getElementById("topicInfo").innerHTML = await loadTopicList(topicId);
+            currentTopic = topicId;
         }
 
         const search = async () => {
             var topic = document.getElementById("search").value;
             loadTopic(topic);
         }
+
+        const newTopic = async () => {
+            var topicName = document.getElementById("newTopic").value;
+            createNewTopic(topicName, currentTopic);
+        }
     </script>
   </head>
   <body onload="loadTopic('0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce');">
     <h1>EFS Topic Browser</h1>
-    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <button id="connect" onclick="connectWallet();">Connect Wallet</button></p>
+    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p>
     <h2 id="topicHeader"></h2>
     <div id="topicInfo"></div>
   </body>

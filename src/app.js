@@ -1,51 +1,66 @@
+import { EAS, Offchain, SchemaEncoder, SchemaRegistry } from "@ethereum-attestation-service/eas-sdk";
+import { ethers } from 'ethers';
+
+export const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; // Sepolia v0.26
+
+const eas = new EAS(EASContractAddress);
+
 
 const endpoint = 'https://sepolia.easscan.org/graphql';
 
 
-const connectWallet = async () => {
-    if (window.ethereum) {
-        try {
-            await window.ethereum.enable();
-            console.log('Wallet connected');
-        } catch (error) {
-            console.error("User cancelled");
-            return;
-        }
+const createNewTopic = async (topicName, currentTopic) => {
+    topicName = topicName.toLowerCase();
+    
+    const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
+
+    let signer;
+    let provider;
+    if (window.ethereum == null) {
+    
+        // If MetaMask is not installed, we use the default provider,
+        // which is backed by a variety of third-party services (such
+        // as INFURA). They do not have private keys installed,
+        // so they only have read-only access
+        console.log("MetaMask not installed; using read-only defaults")
+        provider = ethers.getDefaultProvider("sepolia")
+    
     } else {
-        // If no injected web3 instance is detected, display an error
-        console.error('No wallet/metamask detected');
-        return;
+    
+        // Connect to the MetaMask EIP-1193 object. This is a standard
+        // protocol that allows Ethers access to make all read-only
+        // requests through MetaMask.
+        provider = new ethers.BrowserProvider(window.ethereum, "sepolia")
+    
+        // It also provides an opportunity to request access to write
+        // operations, which will be performed by the private key
+        // that MetaMask manages for the user.
+        signer = await provider.getSigner();
     }
 
-    // Switch to Sepolia
-    await window.ethereum.request({
-        "method": "wallet_switchEthereumChain",
-        "params": [
-            {
-            "chainId": "0xaa36a7"
-            }
-        ]
+    // TODO: Make sure we're on Sepolia
+
+    // Signer must be an ethers-like signer.
+    eas.connect(signer);
+    // Initialize SchemaEncoder with the schema string
+    const schemaEncoder = new SchemaEncoder("string topic");
+    const encodedData = schemaEncoder.encodeData([
+        { name: "topic", value: topicName, type: "string" }
+    ]);
+    const tx = await eas.attest({
+        schema: schemaUID,
+        data: {
+            recipient: "0x0000000000000000000000000000000000000000",
+            expirationTime: 0,
+            revocable: false, // Be aware that if your schema is not revocable, this MUST be false
+            refUID: currentTopic,
+            data: encodedData,
+        },
     });
-
-    // Create a provider from the connected wallet
-    let provider = new ethers.providers.Web3Provider(window.ethereum);
-
-    // Get the signer from the provider
-    let signer = provider.getSigner();
-
-    // Define the contract ABI and address
-    let contractABI = []; // Replace with your contract's ABI
-    let contractAddress = ""; // Replace with your contract's address
-
-    // Create a contract instance
-    let contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-    // Call a contract method (replace "myMethod" and the arguments with your actual method and arguments)
-    //let result = await contract.myMethod(arg1, arg2, ...);
-
-    console.log(result);
+    const newAttestationUID = await tx.wait();
+    console.log("New attestation UID:", newAttestationUID);
 };
-window.connectWallet = connectWallet;
+window.createNewTopic = createNewTopic;
 
 const getParentTopics = async (parentId) => {
 
