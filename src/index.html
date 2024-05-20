@@ -10,6 +10,15 @@
         const loadTopic = async (topicId) => {
             document.getElementById("topicHeader").innerHTML = await getParentTopics(topicId);
             document.getElementById("topicInfo").innerHTML = await loadTopicList(topicId);
+
+            let numMessages = await getNumMessages(topicId);
+            if (numMessages > 0) {
+                document.getElementById("topicHeader").innerHTML += numMessages + "✉"
+                document.getElementById("messageList").innerHTML = await getMessagesForTopic(topicId);
+                document.getElementById("messages").removeAttribute("hidden");
+            } else {
+                document.getElementById("messages").setAttribute("hidden", true);
+            }
             currentTopic = topicId;
         }
 
@@ -29,5 +38,9 @@
     <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p>
     <h2 id="topicHeader"></h2>
     <div id="topicInfo"></div>
+    <div id="messages">
+      <h2>Messages</h2>
+      <div id="messageList"></div>
+    </div>
   </body>
 </html>

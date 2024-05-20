@@ -62,6 +62,77 @@ const createNewTopic = async (topicName, currentTopic) => {
 };
 window.createNewTopic = createNewTopic;
 
+getNumMessages = async (topicId) => {
+    const query = `
+        query {
+            aggregateAttestation(
+            where: {
+                schemaId: { equals: "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f" },
+                refUID: { equals: "` + topicId + `"}
+            }
+            ) {
+            _count {
+                _all
+            }
+            }
+        }
+    `;
+    const variables = {
+    };
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+    });
+
+    const data = await response.json();
+    return data.data.aggregateAttestation._count._all;
+}
+window.getNumMessages = getNumMessages;
+
+getMessagesForTopic = async (topicId) => {
+    const query = `
+        query Attestations($where: AttestationWhereInput) {
+            attestations(where: $where) {
+                id
+                attester
+                decodedDataJson
+            }
+        }
+    `;
+    const variables = {
+        where: {
+                schemaId: {
+                equals: "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f"
+            },
+                refUID: {
+                equals: topicId
+            }
+        }
+    };
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+    });
+
+    const data = await response.json();
+    var messages = "<ul>";
+    data.data.attestations.forEach(attestation => {
+        messages += "<li>" + JSON.parse(attestation.decodedDataJson)[0].value.value + " from " + attestation.attester + "</li>";
+    });
+    messages += "</ul>";
+    return messages;
+}
+window.getMessagesForTopic = getMessagesForTopic;
+
 const getParentTopics = async (parentId) => {
 
     const query = `
