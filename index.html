@@ -4,20 +4,17 @@
     <meta charset="utf-8"/>
     <title>EFS HackFS Prototype</title>
     <script>
-        const getParentTopic = async (parentId) => {
 
-            // Default in "subfirst" topic
-            if (parentId == "") {
-                parentId = "0xc73103baa0bf6b375a1291a2ea40cc8b6dc1c99c1959126fe73f616ef5404161";
-            }
+        const endpoint = 'https://sepolia.easscan.org/graphql';
 
-            const endpoint = 'https://sepolia.easscan.org/graphql';
+        const getParentTopics = async (parentId) => {
 
             const query = `
                 query Attestation($where: AttestationWhereUniqueInput!) {
                     attestation(where: $where) {
                         decodedDataJson
                         refUID
+                        id
                     }
                 }
             `;
@@ -37,25 +34,85 @@
                 })
             });
 
+            var topics = "";
+            var topicName = "";
+            var topicId = "";
             const data = await response.json();
             var parent = data.data.attestation.refUID;
 
+            topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value
+            topicId = data.data.attestation.id;
+
             if (parent != '0x0000000000000000000000000000000000000000000000000000000000000000') {
-                return await getParentTopic(parent) + "/" + JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
+                topics += await getParentTopics(parent);
             } else {
-                return "";
+                topicName = "Sepolia";
             }
+
+            topics += "<a href='#' onclick='loadTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
+
+            return topics;
         };
 
-        const navigateTopic = async () => {
+        const loadTopicList = async (topicId) => {
+            const query = `
+                query Attestations($where: AttestationWhereInput) {
+                    attestations(where: $where) {
+                        decodedDataJson
+                        id
+                    }
+                }
+            `;
+            const variables = {
+                where: {
+                        schemaId: {
+                        equals: "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435"
+                    },
+                        refUID: {
+                        equals: topicId
+                    }
+                }
+            };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: query,
+                    variables: variables
+                })
+            });
+
+            const data = await response.json();
+            var topicInfo
+
+            if (data.data.attestations.length == 0) {
+                topicInfo =  "<p>No topics found</p>";
+            } else {
+                topicInfo = "<ul>";
+                data.data.attestations.forEach(attestation => {
+                    topicInfo += "<li><a href='#' onclick='loadTopic(\"" + attestation.id + "\");'>" + JSON.parse(attestation.decodedDataJson)[0].value.value + "</a></li><br>";
+                });
+                topicInfo += "</ul>";
+            }
+            return topicInfo;
+        }
+
+        const loadTopic = async (topicId) => {
+            document.getElementById("topicHeader").innerHTML = await getParentTopics(topicId);
+            document.getElementById("topicInfo").innerHTML = await loadTopicList(topicId);
+        }
+
+        const search = async () => {
             var topic = document.getElementById("search").value;
-            document.getElementById("currentTopic").innerHTML = "Topic " + await getParentTopic(topic);
+            loadTopic(topic);
         }
     </script>
   </head>
-  <body>
+  <body onload="loadTopic('0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce');">
     <h1>EFS Topic Browser</h1>
-    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="navigateTopic();">Go</button></p>
-    <h2 id="currentTopic"></h2>
+    <p>Go to topic UID: <input id="search" type="text"> <button id="go" onclick="search();">Go</button></p>
+    <h2 id="topicHeader"></h2>
+    <div id="topicInfo"></div>
   </body>
 </html>
