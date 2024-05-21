@@ -94,7 +94,11 @@ getNumMessages = async (topicId) => {
 }
 window.getNumMessages = getNumMessages;
 
-getMessagesForTopic = async (topicId) => {
+getMessagesForTopic = async (topicId, depth) => {
+
+    if (depth == 0) { return; }
+    if (depth == null) { depth = 2; }
+
     const query = `
         query Attestations($where: AttestationWhereInput) {
             attestations(where: $where) {
@@ -125,13 +129,66 @@ getMessagesForTopic = async (topicId) => {
 
     const data = await response.json();
     var messages = "<ul>";
-    data.data.attestations.forEach(attestation => {
-        messages += "<li>" + JSON.parse(attestation.decodedDataJson)[0].value.value + " from " + attestation.attester + "</li>";
-    });
+    for (let i = 0; i < data.data.attestations.length; i++) {
+        let attestation = data.data.attestations[i];
+        messages += "<li>" + JSON.parse(attestation.decodedDataJson)[0].value.value + " from " + attestation.attester + " [<a href='#' onclick='replyToMessage(\"" + attestation.id + "\", \"Test reply\")'>" + "Reply" + "</a>]</li>";
+        messages += await getMessagesForTopic(attestation.id, depth - 1);
+    }
     messages += "</ul>";
     return messages;
 }
 window.getMessagesForTopic = getMessagesForTopic;
+
+window.replyToMessage = async (msgId, message) => {
+    
+    const schemaUID = "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f";
+
+    let signer;
+    let provider;
+    if (window.ethereum == null) {
+    
+        // If MetaMask is not installed, we use the default provider,
+        // which is backed by a variety of third-party services (such
+        // as INFURA). They do not have private keys installed,
+        // so they only have read-only access
+        console.log("MetaMask not installed; using read-only defaults")
+        provider = ethers.getDefaultProvider("sepolia")
+    
+    } else {
+    
+        // Connect to the MetaMask EIP-1193 object. This is a standard
+        // protocol that allows Ethers access to make all read-only
+        // requests through MetaMask.
+        provider = new ethers.BrowserProvider(window.ethereum, "sepolia")
+    
+        // It also provides an opportunity to request access to write
+        // operations, which will be performed by the private key
+        // that MetaMask manages for the user.
+        signer = await provider.getSigner();
+    }
+
+    // TODO: Make sure we're on Sepolia
+
+    // Signer must be an ethers-like signer.
+    eas.connect(signer);
+    // Initialize SchemaEncoder with the schema string
+    const schemaEncoder = new SchemaEncoder("string message");
+    const encodedData = schemaEncoder.encodeData([
+        { name: "message", value: message, type: "string" }
+    ]);
+    const tx = await eas.attest({
+        schema: schemaUID,
+        data: {
+            recipient: "0x0000000000000000000000000000000000000000",
+            expirationTime: 0,
+            refUID: msgId,
+            revocable: true, // Be aware that if your schema is not revocable, this MUST be false
+            data: encodedData,
+        },
+    });
+    const newAttestationUID = await tx.wait();
+    console.log("New attestation UID:", newAttestationUID);
+}
 
 const getParentTopics = async (parentId) => {
 
