@@ -1,3 +1,18 @@
+body {
+    margin: 0px;
+    padding: 0px;
+}
+
+#topicHeader {
+    background-color: #f0f0f0;
+    padding: 0.5em;
+    border-bottom: 1px solid black;
+}
+
+h2 {
+    margin-top: 0px;
+}
+
 li.message {
     border-left: 1px solid black;
     margin: 0.5em;
@@ -24,4 +39,28 @@ span.messageActions {
 
 .replyBox {
     display: none;
+}
+
+.schemaView {
+    float: left;
+    border: 1px solid linen;
+    min-width: 20em;
+}
+
+.schemaView {
+    float: left;
+    border: 1px solid linen;
+    min-width: 20em;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    padding: 10px;
+    margin: 20px;
+    border-radius: 5px;
+    background-color: #fff;
+}
+
+.propName {
+    font-weight: bold;
+}
+.propName::after {
+    content: " =";
 }

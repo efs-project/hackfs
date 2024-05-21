@@ -61,6 +61,43 @@ const createNewTopic = async (topicName, currentTopic) => {
 };
 window.createNewTopic = createNewTopic;
 
+loadProperties = async (topicId) => {
+    const query = `
+        query Attestations($where: AttestationWhereInput) {
+            attestations(where: $where) {
+                decodedDataJson
+                id
+            }
+        }
+    `;
+    const variables = {
+        where: {
+            schemaId: {
+              "equals": "0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01"
+            },
+            refUID: {
+              "equals": topicId
+            }
+          }
+    };
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+    });
+    const data = await response.json();
+    const attestations = data.data.attestations;
+    attestations.forEach(attestation => {
+        attestation.decodedDataJson = JSON.parse(attestation.decodedDataJson);
+    });
+    console.log(attestations);
+    return attestations;
+}
+window.loadProperties = loadProperties;
+
 getNumMessages = async (topicId) => {
     const query = `
         query {
