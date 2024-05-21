@@ -5,17 +5,16 @@ export const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; 
 
 const eas = new EAS(EASContractAddress);
 
-
 const endpoint = 'https://sepolia.easscan.org/graphql';
 
+let signer;
+let provider;
 
 const createNewTopic = async (topicName, currentTopic) => {
     topicName = topicName.toLowerCase();
     
     const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
 
-    let signer;
-    let provider;
     if (window.ethereum == null) {
     
         // If MetaMask is not installed, we use the default provider,
@@ -96,15 +95,17 @@ window.getNumMessages = getNumMessages;
 
 getMessagesForTopic = async (topicId, depth) => {
 
-    if (depth == 0) { return; }
+    if (depth == 0) { return ""; }
     if (depth == null) { depth = 2; }
 
     const query = `
         query Attestations($where: AttestationWhereInput) {
             attestations(where: $where) {
                 id
-                attester
                 decodedDataJson
+                attester
+                time
+                revoked
             }
         }
     `;
@@ -131,7 +132,12 @@ getMessagesForTopic = async (topicId, depth) => {
     var messages = "<ul>";
     for (let i = 0; i < data.data.attestations.length; i++) {
         let attestation = data.data.attestations[i];
-        messages += "<li>" + JSON.parse(attestation.decodedDataJson)[0].value.value + " from " + attestation.attester + " [<a href='#' onclick='replyToMessage(\"" + attestation.id + "\", \"Test reply\")'>" + "Reply" + "</a>]</li>";
+        let time = new Date(attestation.time * 1000);
+        let msgInfo = time.toLocaleString() + " by <span class='address'>" + attestation.attester;
+        let messageBody = JSON.parse(attestation.decodedDataJson)[0].value.value;
+        let actReply = "[<a href='#' onclick='document.getElementById(\"replyBox" + attestation.id + "\").style.display = \"inline\"'>Reply</a>] <span class='replyBox' id='replyBox" + attestation.id + "'><input id=\"replyInput" + attestation.id + "\" type=\"text\"> <button onclick=\"replyToMessage('" + attestation.id + "', document.getElementById('replyInput" + attestation.id + "').value); document.getElementById('replyBox" + attestation.id + "').style.display = 'none';\">Reply</button></span>";
+        let actReact = "[React]";
+        messages += "<li class='message' id='" + attestation.id + "'><span class='messageInfo'>" + msgInfo + "</span></span><span class='messageBody'>" + messageBody + "</span><span class='messageActions'> " + actReply + " " + actReact + "<span></li>";
         messages += await getMessagesForTopic(attestation.id, depth - 1);
     }
     messages += "</ul>";
@@ -139,7 +145,67 @@ getMessagesForTopic = async (topicId, depth) => {
 }
 window.getMessagesForTopic = getMessagesForTopic;
 
+async function performEnsLookup() {
+
+    if (window.ethereum == null) {
+    
+        // If MetaMask is not installed, we use the default provider,
+        // which is backed by a variety of third-party services (such
+        // as INFURA). They do not have private keys installed,
+        // so they only have read-only access
+        console.log("MetaMask not installed; using read-only defaults")
+        provider = ethers.getDefaultProvider("mainnet")
+    
+    } else {
+    
+        // Connect to the MetaMask EIP-1193 object. This is a standard
+        // protocol that allows Ethers access to make all read-only
+        // requests through MetaMask.
+        provider = new ethers.BrowserProvider(window.ethereum, "mainnet")
+    
+        // It also provides an opportunity to request access to write
+        // operations, which will be performed by the private key
+        // that MetaMask manages for the user.
+        signer = await provider.getSigner();
+    }
+
+    // Get all spans with class="address"
+    let spans = document.querySelectorAll('span.address');
+
+    // Create an array to hold the promises
+    let promises = [];
+
+    // Loop through each span
+    for (let i = 0; i < spans.length; i++) {
+        // Get the address from the span's text content
+        let address = spans[i].textContent;
+        console.log("Address: ", address);
+
+        // Perform an ENS lookup on the address
+        let promise = provider.lookupAddress(address)
+            .then(ensName => {
+                console.log("ENS Name: ", ensName);
+                // If an ENS name was found, update the span's text content
+                if (ensName) {
+                    spans[i].textContent = ensName;
+                }
+            })
+            .catch(error => {
+                console.error("Error performing ENS lookup: ", error);
+            });
+
+        // Add the promise to the array
+        promises.push(promise);
+    }
+
+    // Wait for all promises to resolve
+    await Promise.all(promises);
+}
+window.performEnsLookup = performEnsLookup;
+
 window.replyToMessage = async (msgId, message) => {
+
+    console.log("Replying to message", msgId, "with message", message);
     
     const schemaUID = "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f";
 

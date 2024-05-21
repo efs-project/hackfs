@@ -1,0 +1,27 @@
+li.message {
+    border-left: 1px solid black;
+    margin: 0.5em;
+    padding: 0.5em;
+    list-style: none;
+}
+
+span.messageInfo {
+    display: block;
+    font-size: small;
+    margin-bottom: 0.5em;
+}
+
+span.messageBody {
+    display: block;
+    padding: 1em;
+}
+
+span.messageActions {
+    display: block;
+    font-size: small;
+    margin-top: 0.5em;
+}
+
+.replyBox {
+    display: none;
+}
