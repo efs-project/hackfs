@@ -11,7 +11,7 @@
   "source": "src/index.html",
   "scripts": {
     "start": "parcel",
-    "build": "parcel build",
+    "build": "parcel build src/index.html --public-url=./",
     "dev": "npx parcel src/index.html"
   }
 }
