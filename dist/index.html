@@ -1,1 +1,64 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>EFS HackFS Prototype</title><link rel="stylesheet" type="text/css" href="index.9ec45031.css"><script type="module" src="index.96f03a2a.js"></script><script></script></head><body onload="loadTopic('0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce');"> <div id="topicHeader"> <h1 id="topicPath">EFS Topic Browser</h1> <p>Editor: <input id="editorInput" type="text"> <button id="Editor">View</button> Go to topic: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p> </div> <div id="topics" class="schemaView"> <h2>Subtopics</h2> <div id="topicList"></div> </div> <div id="properties" class="schemaView"> <h2>Properties</h2> <div id="propertyList"></div> </div> <div id="messages" class="schemaView"> <h2>Messages</h2> <div id="messageList"></div> </div> </body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>EFS HackFS Prototype</title>
+    <link rel="stylesheet" type="text/css" href="index.eb941a1f.css">
+    <script type="module" src="index.c79caaf9.js"></script>
+    <script>var currentTopic;
+var parentTopic;
+const loadTopic = async (topicId)=>{
+    history.pushState({
+        topicId: topicId
+    }, "", "/" + topicId);
+    document.getElementById("topicPath").innerHTML = await getParentTopics(topicId);
+    document.getElementById("topicList").innerHTML = await loadTopicList(topicId);
+    let properties = await loadProperties(topicId);
+    let table = document.createElement("table");
+    properties.forEach((property)=>{
+        let row = document.createElement("tr");
+        let cell1 = document.createElement("td");
+        cell1.textContent = property.decodedDataJson[0].value.value;
+        cell1.classList.add("propName");
+        row.appendChild(cell1);
+        let cell2 = document.createElement("td");
+        cell2.textContent = property.decodedDataJson[1].value.value;
+        cell2.classList.add("propValue");
+        row.appendChild(cell2);
+        table.appendChild(row);
+    });
+    document.getElementById("propertyList").innerHTML = "";
+    document.getElementById("propertyList").appendChild(table);
+    document.getElementById("messageList").innerHTML = await getMessagesForTopic(topicId, 3);
+    currentTopic = topicId;
+};
+const search = async ()=>{
+    var topic = document.getElementById("search").value;
+    loadTopic(topic);
+};
+const newTopic = async ()=>{
+    var topicName = document.getElementById("newTopic").value;
+    createNewTopic(topicName, currentTopic);
+};
+
+</script>
+  </head>
+  <body onload="loadTopic('0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce');">
+    <div id="topicHeader">
+      <h1 id="topicPath">EFS Topic Browser</h1>
+      <p>Editor: <input id="editorInput" type="text"> <button id="Editor">View</button> Go to topic: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p>
+    </div>
+    <div id="topics" class="schemaView">
+      <h2>Subtopics</h2>
+      <div id="topicList"></div>
+    </div>
+    <div id="properties" class="schemaView">
+      <h2>Properties</h2>
+      <div id="propertyList"></div>
+    </div>
+    <div id="messages" class="schemaView">
+      <h2>Messages</h2>
+      <div id="messageList"></div>
+    </div>
+  </body>
+</html>
