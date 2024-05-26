@@ -69,8 +69,26 @@
         const loadTopic = async (topicId) => {
             //history.pushState({topicId: topicId}, "", "/" + topicId);
 
+            document.getElementById("app").innerHTML = "";
             Object.keys(schemas).forEach(schemaId => {
-                document.getElementById("List" + schemaId).innerHTML = "";
+                let schemaView = document.createElement("div");
+                schemaView.id = "View" + schemaId;
+                schemaView.classList.add("schemaView");
+                let h2 = document.createElement("h2");
+                h2.textContent = schemas[schemaId].display + " ";
+                let span = document.createElement("span");
+                span.classList.add("createAttestation");
+                let a = document.createElement("a");
+                a.href = "";
+                a.onclick = (event) => { event.preventDefault(); openAttestationEditor(schemaId); }
+                a.textContent = "[Create New]";
+                span.appendChild(a);
+                h2.appendChild(span);
+                schemaView.appendChild(h2);
+                let list = document.createElement("div");
+                list.id = "List" + schemaId;
+                schemaView.appendChild(list);
+                document.getElementById("app").appendChild(schemaView);
             });
 
             document.getElementById("topicPath").innerHTML = await getParentTopics(topicId);
@@ -170,17 +188,6 @@
       <h1 id="topicPath">EFS Topic Browser</h1>
       <p>Editor: <input id="editorInput" type="text"> <button id="Editor">View</button> Go to topic: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p>
     </div>
-    <div id="View0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435" class="schemaView">
-      <h2>Subtopics <span class="createAttestation">[<a href="#" onclick="openAttestationEditor('0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435')">Create New</a>]</span></h2>
-      <div id="List0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435"></div>
-    </div>
-    <div id="View0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01" class="schemaView">
-      <h2>Properties <span class="createAttestation">[<a href="#" onclick="openAttestationEditor('0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01')">Create New</a>]</span></h2>
-      <div id="List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01"></div>
-    </div>
-    <div id="View0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f" class="schemaView">
-      <h2>Messages <span class="createAttestation">[<a href="#" onclick="openAttestationEditor('0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f')">Create New</a>]</span></h2>
-      <div id="List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f"></div>
-    </div>
+    <div id="app"></div>
   </body>
 </html>
