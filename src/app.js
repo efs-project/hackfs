@@ -3,17 +3,16 @@ import { ethers } from 'ethers';
 
 export const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; // Sepolia v0.26
 
-const eas = new EAS(EASContractAddress);
 
 const endpoint = 'https://sepolia.easscan.org/graphql';
 
 let signer;
 let provider;
+let eas;
 
-const createNewTopic = async (topicName, currentTopic) => {
-    topicName = topicName.toLowerCase();
-    
-    const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
+const setupEAS = async () => {
+
+    if (eas !== undefined) { return eas; }
 
     if (window.ethereum == null) {
     
@@ -30,18 +29,61 @@ const createNewTopic = async (topicName, currentTopic) => {
         // protocol that allows Ethers access to make all read-only
         // requests through MetaMask.
         provider = new ethers.BrowserProvider(window.ethereum, "sepolia")
-    
-        // It also provides an opportunity to request access to write
-        // operations, which will be performed by the private key
-        // that MetaMask manages for the user.
-        signer = await provider.getSigner();
     }
 
-    // TODO: Make sure we're on Sepolia
+ 
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xaa36a7' }],    // chainId must be in HEX with 0x in front
+            });
+    
+    signer = await provider.getSigner();
 
-    // Signer must be an ethers-like signer.
+    eas = new EAS(EASContractAddress);
     eas.connect(signer);
-    // Initialize SchemaEncoder with the schema string
+}
+
+const createAttestation = async (schemaUID, data, refUID) => {
+
+    await setupEAS();
+
+    let schemaEncoder;
+    let encodedData;
+    let tx;
+
+    switch (schemaUID) {
+        case "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435":
+            let topicName = data.topicName.toLowerCase();
+            schemaEncoder = new SchemaEncoder("string topic");
+            encodedData = schemaEncoder.encodeData([
+                { name: "topic", value: topicName, type: "string" }
+            ]);
+            tx = await eas.attest({
+                schema: schemaUID,
+                data: {
+                    recipient: "0x0000000000000000000000000000000000000000",
+                    expirationTime: 0,
+                    revocable: false, // Be aware that if your schema is not revocable, this MUST be false
+                    refUID: refUID,
+                    data: encodedData,
+                },
+            });
+            break;
+        default: return;
+    }
+
+    const newAttestationUID = await tx.wait();
+    console.log("New attestation UID:", newAttestationUID);
+}
+window.createAttestation = createAttestation;
+
+const createNewTopic = async (topicName, currentTopic) => {
+    topicName = topicName.toLowerCase();
+    
+    const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
+
+    await setupEAS();
+
     const schemaEncoder = new SchemaEncoder("string topic");
     const encodedData = schemaEncoder.encodeData([
         { name: "topic", value: topicName, type: "string" }
@@ -93,7 +135,6 @@ loadProperties = async (topicId) => {
     attestations.forEach(attestation => {
         attestation.decodedDataJson = JSON.parse(attestation.decodedDataJson);
     });
-    console.log(attestations);
     return attestations;
 }
 window.loadProperties = loadProperties;

@@ -3,16 +3,14 @@
   <head>
     <meta charset="utf-8">
     <title>EFS HackFS Prototype</title>
-    <link rel="stylesheet" type="text/css" href="index.eb941a1f.css">
-    <script type="module" src="index.c79caaf9.js"></script>
+    <link rel="stylesheet" type="text/css" href="/index.4a5519d3.css">
+    <script src="/index.0641b553.js" defer=""></script>
     <script>var currentTopic;
 var parentTopic;
 const loadTopic = async (topicId)=>{
-    history.pushState({
-        topicId: topicId
-    }, "", "/" + topicId);
+    //history.pushState({topicId: topicId}, "", "/" + topicId);
     document.getElementById("topicPath").innerHTML = await getParentTopics(topicId);
-    document.getElementById("topicList").innerHTML = await loadTopicList(topicId);
+    document.getElementById("0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435List").innerHTML = await loadTopicList(topicId);
     let properties = await loadProperties(topicId);
     let table = document.createElement("table");
     properties.forEach((property)=>{
@@ -40,6 +38,16 @@ const newTopic = async ()=>{
     var topicName = document.getElementById("newTopic").value;
     createNewTopic(topicName, currentTopic);
 };
+const openAttestationEditor = async (schemaId)=>{
+    var attestationEditor = document.createElement("div");
+    attestationEditor.innerHTML = "<h3>Attestation Editor</h3><p>Attestation Schema: " + schemaId + "</p><p>Attestation Data: <input id='attestationData' type='text'></p><button onclick='callCreateAttestation(\"" + schemaId + "\")'>Submit</button>";
+    document.getElementById(schemaId + "List").prepend(attestationEditor);
+};
+const callCreateAttestation = async (schemaId)=>{
+    let data = {};
+    data.topicName = document.getElementById("attestationData").value;
+    createAttestation(schemaId, data, currentTopic);
+};
 
 </script>
   </head>
@@ -48,16 +56,16 @@ const newTopic = async ()=>{
       <h1 id="topicPath">EFS Topic Browser</h1>
       <p>Editor: <input id="editorInput" type="text"> <button id="Editor">View</button> Go to topic: <input id="search" type="text"> <button id="go" onclick="search();">Go</button> <input id="newTopic" type="text"> <button id="newTopicButton" onclick="newTopic();">Add Topic</button></p>
     </div>
-    <div id="topics" class="schemaView">
-      <h2>Subtopics</h2>
-      <div id="topicList"></div>
+    <div id="0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435View" class="schemaView">
+      <h2>Subtopics <span class="createAttestation">[<a href="#" onclick="openAttestationEditor('0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435')">Create New</a>]</span></h2>
+      <div id="0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435List"></div>
     </div>
     <div id="properties" class="schemaView">
-      <h2>Properties</h2>
+      <h2>Properties <span class="createAttestation">[Create New]</span></h2>
       <div id="propertyList"></div>
     </div>
     <div id="messages" class="schemaView">
-      <h2>Messages</h2>
+      <h2>Messages <span class="createAttestation">[Create New]</span></h2>
       <div id="messageList"></div>
     </div>
   </body>
