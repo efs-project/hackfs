@@ -1,448 +1,174 @@
-import { EAS, Offchain, SchemaEncoder, SchemaRegistry } from "@ethereum-attestation-service/eas-sdk";
-import { ethers } from 'ethers';
+var currentTopic;
+var parentTopic;
 
-export const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; // Sepolia v0.26
-
-
-const endpoint = 'https://sepolia.easscan.org/graphql';
-
-let signer;
-let provider;
-let eas;
-
-const setupEAS = async () => {
-
-    if (eas !== undefined) { return eas; }
-
-    if (window.ethereum == null) {
-    
-        // If MetaMask is not installed, we use the default provider,
-        // which is backed by a variety of third-party services (such
-        // as INFURA). They do not have private keys installed,
-        // so they only have read-only access
-        console.log("MetaMask not installed; using read-only defaults")
-        provider = ethers.getDefaultProvider("sepolia")
-    
-    } else {
-    
-        // Connect to the MetaMask EIP-1193 object. This is a standard
-        // protocol that allows Ethers access to make all read-only
-        // requests through MetaMask.
-        provider = new ethers.BrowserProvider(window.ethereum, "sepolia")
-    }
-
- 
-        await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0xaa36a7' }],    // chainId must be in HEX with 0x in front
-            });
-    
-    signer = await provider.getSigner();
-
-    eas = new EAS(EASContractAddress);
-    eas.connect(signer);
-}
-
-const createAttestation = async (schemaUID, data, refUID) => {
-
-    await setupEAS();
-
-    let schemaEncoder;
-    let encodedData;
-    let recipient = "0x0000000000000000000000000000000000000000";
-    let expirationTime = 0;
-    let revocable = false;
-    let tx;
-
-    switch (schemaUID) {
-        case "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435":
-            let topicName = data.topic.toLowerCase();
-            schemaEncoder = new SchemaEncoder("string topic");
-            encodedData = schemaEncoder.encodeData([
-                { name: "topic", value: topicName, type: "string" }
-            ]);
-            break;
-        case "0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01":
-            schemaEncoder = new SchemaEncoder("string name,string value,string mediaType,bool offchain");
-            encodedData = schemaEncoder.encodeData([
-                { name: "name", value: data.name, type: "string" },
-                { name: "value", value: data.value, type: "string" },
-                { name: "mediaType", value: data.mediaType, type: "string" },
-                { name: "offchain", value: data.offchain, type: "bool" }
-            ]);
-            revocable = true;
-            break;
-        case "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f":
-            schemaEncoder = new SchemaEncoder("string message");
-            encodedData = schemaEncoder.encodeData([
-                { name: "message", value: data.message, type: "string" }
-            ]);
-            revocable = true;
-            break;
-        default: return;
-    }
-
-    tx = await eas.attest({
-        schema: schemaUID,
-        data: {
-            recipient: recipient,
-            expirationTime: expirationTime,
-            revocable: revocable, // Be aware that if your schema is not revocable, this MUST be false
-            refUID: refUID,
-            data: encodedData,
-        },
-    });
-    const newAttestationUID = await tx.wait();
-    console.log("New attestation UID:", newAttestationUID);
-}
-window.createAttestation = createAttestation;
-
-const createNewTopic = async (topicName, currentTopic) => {
-    topicName = topicName.toLowerCase();
-    
-    const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
-
-    await setupEAS();
-
-    const schemaEncoder = new SchemaEncoder("string topic");
-    const encodedData = schemaEncoder.encodeData([
-        { name: "topic", value: topicName, type: "string" }
-    ]);
-    const tx = await eas.attest({
-        schema: schemaUID,
-        data: {
-            recipient: "0x0000000000000000000000000000000000000000",
-            expirationTime: 0,
-            revocable: false, // Be aware that if your schema is not revocable, this MUST be false
-            refUID: currentTopic,
-            data: encodedData,
-        },
-    });
-    const newAttestationUID = await tx.wait();
-    console.log("New attestation UID:", newAttestationUID);
+let schemas = {
+    "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435": {
+        "name": "topic",
+        "display": "Subtopics",
+        "properties": [
+            {
+                "name": "topic",
+                "display": "Topic",
+                "type": "string",
+                "formType": "text"
+            }
+        ]
+    },
+    "0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01": {
+        "name": "property",
+        "display": "Properties",
+        "properties": [
+            {
+                "name": "name",
+                "display": "Name",
+                "type": "string",
+                "formType": "text"
+            },
+            {
+                "name": "value",
+                "display": "Value",
+                "type": "string",
+                "formType": "text"
+            },
+            {
+                "name": "mediaType",
+                "display": "Media Type",
+                "type": "string",
+                "formType": "text"
+            },
+            {
+                "name": "Offchain",
+                "display": "Is Offchain? (IPFS)",
+                "type": "bool",
+                "formType": "checkbox"
+            },
+        ]
+    },
+    "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f": {
+        "name": "message",
+        "display": "Messages",
+        "properties": [
+            {
+                "name": "message",
+                "display": "Message",
+                "type": "string",
+                "formType": "text"
+            }
+        ]
+    },
 };
-window.createNewTopic = createNewTopic;
 
-loadProperties = async (topicId) => {
-    const query = `
-        query Attestations($where: AttestationWhereInput) {
-            attestations(where: $where) {
-                decodedDataJson
-                id
-            }
-        }
-    `;
-    const variables = {
-        where: {
-            schemaId: {
-              "equals": "0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01"
-            },
-            refUID: {
-              "equals": topicId
-            }
-          }
-    };
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
-    const data = await response.json();
-    const attestations = data.data.attestations;
-    attestations.forEach(attestation => {
-        attestation.decodedDataJson = JSON.parse(attestation.decodedDataJson);
-    });
-    return attestations;
-}
-window.loadProperties = loadProperties;
+const loadTopic = async (topicId) => {
+    //history.pushState({topicId: topicId}, "", "/" + topicId);
 
-getNumMessages = async (topicId) => {
-    const query = `
-        query {
-            aggregateAttestation(
-            where: {
-                schemaId: { equals: "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f" },
-                refUID: { equals: "` + topicId + `"}
-            }
-            ) {
-            _count {
-                _all
-            }
-            }
-        }
-    `;
-    const variables = {
-    };
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
+    document.getElementById("app").innerHTML = "";
+    Object.keys(schemas).forEach(schemaId => {
+        let schemaView = document.createElement("div");
+        schemaView.id = "View" + schemaId;
+        schemaView.classList.add("schemaView");
+        let h2 = document.createElement("h2");
+        h2.textContent = schemas[schemaId].display + " ";
+        let span = document.createElement("span");
+        span.classList.add("createAttestation");
+        let a = document.createElement("a");
+        a.href = "";
+        a.onclick = (event) => { event.preventDefault(); openAttestationEditor(schemaId); }
+        a.textContent = "[Create New]";
+        span.appendChild(a);
+        h2.appendChild(span);
+        schemaView.appendChild(h2);
+        let list = document.createElement("div");
+        list.id = "List" + schemaId;
+        schemaView.appendChild(list);
+        document.getElementById("app").appendChild(schemaView);
     });
 
-    const data = await response.json();
-    return data.data.aggregateAttestation._count._all;
-}
-window.getNumMessages = getNumMessages;
+    document.getElementById("topicPath").innerHTML = await getParentTopics(topicId);
+    document.getElementById("List0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435").innerHTML = await loadTopicList(topicId);
 
-getMessagesForTopic = async (topicId, depth) => {
+    let properties = await loadProperties(topicId);
 
-    if (depth == 0) { return ""; }
-    if (depth == null) { depth = 2; }
-
-    const query = `
-        query Attestations($where: AttestationWhereInput) {
-            attestations(where: $where) {
-                id
-                decodedDataJson
-                attester
-                time
-                revoked
-            }
-        }
-    `;
-    const variables = {
-        where: {
-                schemaId: {
-                equals: "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f"
-            },
-                refUID: {
-                equals: topicId
-            }
-        }
-    };
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
-
-    const data = await response.json();
-    var messages = "<ul>";
-    for (let i = 0; i < data.data.attestations.length; i++) {
-        let attestation = data.data.attestations[i];
-        let time = new Date(attestation.time * 1000);
-        let msgInfo = time.toLocaleString() + " by <span class='address'>" + attestation.attester;
-        let messageBody = JSON.parse(attestation.decodedDataJson)[0].value.value;
-        let actReply = "[<a href='#' onclick='document.getElementById(\"replyBox" + attestation.id + "\").style.display = \"inline\"'>Reply</a>] <span class='replyBox' id='replyBox" + attestation.id + "'><input id=\"replyInput" + attestation.id + "\" type=\"text\"> <button onclick=\"replyToMessage('" + attestation.id + "', document.getElementById('replyInput" + attestation.id + "').value); document.getElementById('replyBox" + attestation.id + "').style.display = 'none';\">Reply</button></span>";
-        let actReact = "[React]";
-        messages += "<li class='message' id='" + attestation.id + "'><span class='messageInfo'>" + msgInfo + "</span></span><span class='messageBody'>" + messageBody + "</span><span class='messageActions'> " + actReply + " " + actReact + "<span></li>";
-        messages += await getMessagesForTopic(attestation.id, depth - 1);
-    }
-    messages += "</ul>";
-    return messages;
-}
-window.getMessagesForTopic = getMessagesForTopic;
-
-async function performEnsLookup() {
-
-    if (window.ethereum == null) {
-    
-        // If MetaMask is not installed, we use the default provider,
-        // which is backed by a variety of third-party services (such
-        // as INFURA). They do not have private keys installed,
-        // so they only have read-only access
-        console.log("MetaMask not installed; using read-only defaults")
-        provider = ethers.getDefaultProvider("mainnet")
-    
+    if (properties.length === 0) {
+        document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").innerHTML = "No properties found.";
+        return;
     } else {
-    
-        // Connect to the MetaMask EIP-1193 object. This is a standard
-        // protocol that allows Ethers access to make all read-only
-        // requests through MetaMask.
-        provider = new ethers.BrowserProvider(window.ethereum, "mainnet")
-    
-        // It also provides an opportunity to request access to write
-        // operations, which will be performed by the private key
-        // that MetaMask manages for the user.
-        signer = await provider.getSigner();
-    }
+        let table = document.createElement("table");
+        properties.forEach(property => {
+            let row = document.createElement("tr");
 
-    // Get all spans with class="address"
-    let spans = document.querySelectorAll('span.address');
+            let cell1 = document.createElement("td");
+            cell1.textContent = property.decodedDataJson[0].value.value;
+            cell1.classList.add("propName");
+            row.appendChild(cell1);
 
-    // Create an array to hold the promises
-    let promises = [];
+            let cell2 = document.createElement("td");
+            cell2.textContent = property.decodedDataJson[1].value.value;
+            cell2.classList.add("propValue");
+            row.appendChild(cell2);
 
-    // Loop through each span
-    for (let i = 0; i < spans.length; i++) {
-        // Get the address from the span's text content
-        let address = spans[i].textContent;
-        console.log("Address: ", address);
-
-        // Perform an ENS lookup on the address
-        let promise = provider.lookupAddress(address)
-            .then(ensName => {
-                console.log("ENS Name: ", ensName);
-                // If an ENS name was found, update the span's text content
-                if (ensName) {
-                    spans[i].textContent = ensName;
-                }
-            })
-            .catch(error => {
-                console.error("Error performing ENS lookup: ", error);
-            });
-
-        // Add the promise to the array
-        promises.push(promise);
-    }
-
-    // Wait for all promises to resolve
-    await Promise.all(promises);
-}
-window.performEnsLookup = performEnsLookup;
-
-window.replyToMessage = async (msgId, message) => {
-
-    console.log("Replying to message", msgId, "with message", message);
-    
-    const schemaUID = "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f";
-
-    let signer;
-    let provider;
-    if (window.ethereum == null) {
-    
-        // If MetaMask is not installed, we use the default provider,
-        // which is backed by a variety of third-party services (such
-        // as INFURA). They do not have private keys installed,
-        // so they only have read-only access
-        console.log("MetaMask not installed; using read-only defaults")
-        provider = ethers.getDefaultProvider("sepolia")
-    
-    } else {
-    
-        // Connect to the MetaMask EIP-1193 object. This is a standard
-        // protocol that allows Ethers access to make all read-only
-        // requests through MetaMask.
-        provider = new ethers.BrowserProvider(window.ethereum, "sepolia")
-    
-        // It also provides an opportunity to request access to write
-        // operations, which will be performed by the private key
-        // that MetaMask manages for the user.
-        signer = await provider.getSigner();
-    }
-
-    // TODO: Make sure we're on Sepolia
-
-    // Signer must be an ethers-like signer.
-    eas.connect(signer);
-    // Initialize SchemaEncoder with the schema string
-    const schemaEncoder = new SchemaEncoder("string message");
-    const encodedData = schemaEncoder.encodeData([
-        { name: "message", value: message, type: "string" }
-    ]);
-    const tx = await eas.attest({
-        schema: schemaUID,
-        data: {
-            recipient: "0x0000000000000000000000000000000000000000",
-            expirationTime: 0,
-            refUID: msgId,
-            revocable: true, // Be aware that if your schema is not revocable, this MUST be false
-            data: encodedData,
-        },
-    });
-    const newAttestationUID = await tx.wait();
-    console.log("New attestation UID:", newAttestationUID);
-}
-
-const getParentTopics = async (parentId) => {
-
-    const query = `
-        query Attestation($where: AttestationWhereUniqueInput!) {
-            attestation(where: $where) {
-                decodedDataJson
-                refUID
-                id
-            }
-        }
-    `;
-
-    const variables = {
-        where: {
-            id: parentId
-        }
-    };
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
-
-    var topics = "";
-    var topicName = "";
-    var topicId = "";
-    const data = await response.json();
-    var parent = data.data.attestation.refUID;
-
-    topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value
-    topicId = data.data.attestation.id;
-
-    if (parent != '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        topics += await getParentTopics(parent);
-    } else {
-        topicName = "Sepolia";
-    }
-
-    topics += "<a href='#' onclick='loadTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
-
-    return topics;
-};
-window.getParentTopics = getParentTopics;
-
-const loadTopicList = async (topicId) => {
-    const query = `
-        query Attestations($where: AttestationWhereInput) {
-            attestations(where: $where) {
-                decodedDataJson
-                id
-            }
-        }
-    `;
-    const variables = {
-        where: {
-                schemaId: {
-                equals: "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435"
-            },
-                refUID: {
-                equals: topicId
-            }
-        }
-    };
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
-
-    const data = await response.json();
-    var topicInfo
-
-    if (data.data.attestations.length == 0) {
-        topicInfo =  "<p>No topics found</p>";
-    } else {
-        topicInfo = "<ul>";
-        data.data.attestations.forEach(attestation => {
-            topicInfo += "<li><a href='#' onclick='loadTopic(\"" + attestation.id + "\");'>" + JSON.parse(attestation.decodedDataJson)[0].value.value + "</a></li>";
+            table.appendChild(row);
         });
-        topicInfo += "</ul>";
+        document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").appendChild(table);
+    };
+
+    let messages = await getMessagesForTopic(topicId, 3);
+    if (messages.length === 0) {
+        document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = "No properties found.";
+    } else {
+        document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = messages;
     }
-    return topicInfo;
+
+
+    currentTopic = topicId;
 }
-window.loadTopicList = loadTopicList;
+
+const search = async () => {
+    var topic = document.getElementById("search").value;
+    loadTopic(topic);
+}
+
+const newTopic = async () => {
+    var topicName = document.getElementById("newTopic").value;
+    createNewTopic(topicName, currentTopic);
+}
+
+const openAttestationEditor = async (schemaId) => {
+    var attestationEditor = document.getElementById("New" + schemaId);
+    if (attestationEditor == null) {
+
+        attestationEditor = document.createElement("div");
+        attestationEditor.id = "New" + schemaId;
+        document.getElementById("List" + schemaId).prepend(attestationEditor);
+        attestationEditor.innerHTML = "<h3>New " + schemas[schemaId].name + "</h3>";
+
+        schemas[schemaId].properties.forEach(property => {
+            attestationEditor.innerHTML += property.display + ": <input id='" + property.name + "' type='" + property.formType + "'><br />";
+        });
+
+        attestationEditor.innerHTML += "<button onclick='callCreateAttestation(\"" + schemaId + "\")'>Create</button></div>";
+        attestationEditor.toggleAttribute("hidden");
+    }
+    attestationEditor.toggleAttribute("hidden");
+}
+
+const callCreateAttestation = async (schemaId) => {
+    let data = {};
+
+    let inputs = document.querySelectorAll(`#New${schemaId} input`);
+
+    inputs.forEach(input => {
+        console.log(input.value);
+
+        if (input.type === 'checkbox') {
+            data[input.id] = input.checked;
+            input.checked = false;
+        } else {
+            data[input.id] = input.value;
+            input.value = '';
+        }
+    });
+
+    createAttestation(schemaId, data, currentTopic);
+
+    document.getElementById("New" + schemaId).toggleAttribute("hidden");
+}
