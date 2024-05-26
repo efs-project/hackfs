@@ -97,7 +97,7 @@ const createAttestation = async (schemaUID, data, refUID) => {
 }
 window.createAttestation = createAttestation;
 
-loadProperties = async (topicId) => {
+const loadProperties = async (topicId) => {
     const query = `
         query Attestations($where: AttestationWhereInput) {
             attestations(where: $where) {
@@ -133,7 +133,7 @@ loadProperties = async (topicId) => {
 }
 window.loadProperties = loadProperties;
 
-getNumMessages = async (topicId) => {
+const getNumMessages = async (topicId) => {
     const query = `
         query {
             aggregateAttestation(
@@ -165,7 +165,7 @@ getNumMessages = async (topicId) => {
 }
 window.getNumMessages = getNumMessages;
 
-getMessagesForTopic = async (topicId, depth) => {
+const getMessagesForTopic = async (topicId, depth) => {
 
     if (depth == 0) { return ""; }
     if (depth == null) { depth = 2; }
