@@ -49,29 +49,49 @@ const createAttestation = async (schemaUID, data, refUID) => {
 
     let schemaEncoder;
     let encodedData;
+    let recipient = "0x0000000000000000000000000000000000000000";
+    let expirationTime = 0;
+    let revocable = false;
     let tx;
 
     switch (schemaUID) {
         case "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435":
-            let topicName = data.topicName.toLowerCase();
+            let topicName = data.topic.toLowerCase();
             schemaEncoder = new SchemaEncoder("string topic");
             encodedData = schemaEncoder.encodeData([
                 { name: "topic", value: topicName, type: "string" }
             ]);
-            tx = await eas.attest({
-                schema: schemaUID,
-                data: {
-                    recipient: "0x0000000000000000000000000000000000000000",
-                    expirationTime: 0,
-                    revocable: false, // Be aware that if your schema is not revocable, this MUST be false
-                    refUID: refUID,
-                    data: encodedData,
-                },
-            });
+            break;
+        case "0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01":
+            schemaEncoder = new SchemaEncoder("string name,string value,string mediaType,bool offchain");
+            encodedData = schemaEncoder.encodeData([
+                { name: "name", value: data.name, type: "string" },
+                { name: "value", value: data.value, type: "string" },
+                { name: "mediaType", value: data.mediaType, type: "string" },
+                { name: "offchain", value: data.offchain, type: "bool" }
+            ]);
+            revocable = true;
+            break;
+        case "0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f":
+            schemaEncoder = new SchemaEncoder("string message");
+            encodedData = schemaEncoder.encodeData([
+                { name: "message", value: data.message, type: "string" }
+            ]);
+            revocable = true;
             break;
         default: return;
     }
 
+    tx = await eas.attest({
+        schema: schemaUID,
+        data: {
+            recipient: recipient,
+            expirationTime: expirationTime,
+            revocable: revocable, // Be aware that if your schema is not revocable, this MUST be false
+            refUID: refUID,
+            data: encodedData,
+        },
+    });
     const newAttestationUID = await tx.wait();
     console.log("New attestation UID:", newAttestationUID);
 }
