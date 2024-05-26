@@ -97,32 +97,6 @@ const createAttestation = async (schemaUID, data, refUID) => {
 }
 window.createAttestation = createAttestation;
 
-const createNewTopic = async (topicName, currentTopic) => {
-    topicName = topicName.toLowerCase();
-
-    const schemaUID = "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435";
-
-    await setupEAS();
-
-    const schemaEncoder = new SchemaEncoder("string topic");
-    const encodedData = schemaEncoder.encodeData([
-        { name: "topic", value: topicName, type: "string" }
-    ]);
-    const tx = await eas.attest({
-        schema: schemaUID,
-        data: {
-            recipient: "0x0000000000000000000000000000000000000000",
-            expirationTime: 0,
-            revocable: false, // Be aware that if your schema is not revocable, this MUST be false
-            refUID: currentTopic,
-            data: encodedData,
-        },
-    });
-    const newAttestationUID = await tx.wait();
-    console.log("New attestation UID:", newAttestationUID);
-};
-window.createNewTopic = createNewTopic;
-
 loadProperties = async (topicId) => {
     const query = `
         query Attestations($where: AttestationWhereInput) {

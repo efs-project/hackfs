@@ -127,11 +127,6 @@ const search = async () => {
     loadTopic(topic);
 }
 
-const newTopic = async () => {
-    var topicName = document.getElementById("newTopic").value;
-    createNewTopic(topicName, currentTopic);
-}
-
 const openAttestationEditor = async (schemaId) => {
     var attestationEditor = document.getElementById("New" + schemaId);
     if (attestationEditor == null) {
