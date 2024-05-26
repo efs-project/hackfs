@@ -1,5 +1,6 @@
 var currentTopic;
 var parentTopic;
+var currentChainId;
 
 let schemas = {
     "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435": {
@@ -167,3 +168,33 @@ const callCreateAttestation = async (schemaId) => {
 
     document.getElementById("New" + schemaId).toggleAttribute("hidden");
 }
+
+let map = {
+    "11155111": "0xaa36a7",
+    "0xaa36a7": "0xaa36a7",
+    "sepolia": "0xaa36a7"
+};
+
+function getChainId(theString) {
+    return map[theString];
+}
+
+document.addEventListener("DOMContentLoaded", (event) => {
+    
+    let url = new URL(window.location.href);
+
+    let pathSegments = url.hash.split('/').filter(segment => segment !== '');
+
+    pathSegments.forEach(segment => {
+        if (segment.startsWith('#')) {
+            currentChainId = getChainId(segment.substring(1).toLocaleLowerCase());
+            pathSegments = pathSegments.filter(segment => !segment.startsWith('#'));
+        }
+    });
+
+    console.log(pathSegments);
+
+    topicPathToId(pathSegments).then(topicId => {
+        loadTopic(topicId);
+    });
+  });

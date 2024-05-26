@@ -41725,6 +41725,56 @@ const $36bf0d2054c36b6f$var$getParentTopics = async (parentId)=>{
     return topics;
 };
 window.getParentTopics = $36bf0d2054c36b6f$var$getParentTopics;
+const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
+    let topicId = "";
+    if (parentId == null) parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
+    const query = `
+        query FindFirstAttestation($where: AttestationWhereInput) {
+            findFirstAttestation(where: $where) {
+                id
+            }
+        }
+    `;
+    const variables = {
+        where: {
+            schemaId: {
+                equals: "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435"
+            },
+            refUID: {
+                equals: parentId
+            },
+            decodedDataJson: {
+                contains: topicName.toLowerCase()
+            }
+        }
+    };
+    const response = await fetch($36bf0d2054c36b6f$var$endpoint, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+    });
+    const data = await response.json();
+    topicId = data.data.findFirstAttestation.id;
+    console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
+    return topicId;
+};
+window.topicNameToId = $36bf0d2054c36b6f$var$topicNameToId;
+const $36bf0d2054c36b6f$var$topicPathToId = async (topics)=>{
+    let topicId;
+    let parentId;
+    if (parentId == null) parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
+    for(let i = 0; i < topics.length; i++){
+        topicId = await $36bf0d2054c36b6f$var$topicNameToId(topics[i], parentId);
+        parentId = topicId;
+    }
+    return topicId;
+};
+window.topicPathToId = $36bf0d2054c36b6f$var$topicPathToId;
 const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
     const query = `
         query Attestations($where: AttestationWhereInput) {
@@ -41769,4 +41819,4 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
 window.loadTopicList = $36bf0d2054c36b6f$var$loadTopicList;
 
 
-//# sourceMappingURL=index.4d825ffc.js.map
+//# sourceMappingURL=index.8b3c40b1.js.map

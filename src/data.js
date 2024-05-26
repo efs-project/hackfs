@@ -376,6 +376,68 @@ const getParentTopics = async (parentId) => {
 };
 window.getParentTopics = getParentTopics;
 
+const topicNameToId = async (topicName, parentId) => {
+    let topicId = "";
+
+    if (parentId == null) {
+        parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
+    }
+
+    const query = `
+        query FindFirstAttestation($where: AttestationWhereInput) {
+            findFirstAttestation(where: $where) {
+                id
+            }
+        }
+    `;
+    const variables = {
+        where: {
+            schemaId: {
+                equals: "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435"
+            },
+            refUID: {
+                equals: parentId
+            },
+            decodedDataJson: {
+                contains: topicName.toLowerCase()
+            }
+        }
+    };
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            query: query,
+            variables: variables
+        })
+    });
+
+    const data = await response.json();
+
+    topicId = data.data.findFirstAttestation.id;
+    console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
+
+    return topicId;
+}
+window.topicNameToId = topicNameToId;
+
+const topicPathToId = async (topics) => {
+    
+    let topicId;
+    let parentId;
+    if (parentId == null) {
+        parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
+    }
+
+    for (let i = 0; i < topics.length; i++) {
+        topicId = await topicNameToId(topics[i], parentId);
+        parentId = topicId;
+    }
+    
+    return topicId;
+}
+window.topicPathToId = topicPathToId;
+
 const loadTopicList = async (topicId) => {
     const query = `
         query Attestations($where: AttestationWhereInput) {
