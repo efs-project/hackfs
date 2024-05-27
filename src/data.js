@@ -523,6 +523,7 @@ const loadTopicList = async (topicId) => {
     var topicName;
     var topicId;
     var newUrl;
+    var topicObj;
 
     if (data.data.attestations.length == 0) {
         topicInfo = "<p>No topics found</p>";
@@ -531,7 +532,7 @@ const loadTopicList = async (topicId) => {
         data.data.attestations.forEach(attestation => {
             topicName = JSON.parse(attestation.decodedDataJson)[0].value.value;
             topicId = attestation.id;
-            topicObj = { topicId: topicId };
+            topicObj = { "topicId": topicId };
             newUrl = window.location.href + "/" + topicName;
             topicInfo += "<li><a href='" + newUrl + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\");'>" + topicName + "</a></li>";
         });

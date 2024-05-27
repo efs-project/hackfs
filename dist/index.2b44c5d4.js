@@ -41853,6 +41853,7 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
     var topicName;
     var topicId;
     var newUrl;
+    var topicObj;
     if (data.data.attestations.length == 0) topicInfo = "<p>No topics found</p>";
     else {
         topicInfo = "<ul>";
@@ -41860,7 +41861,7 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
             topicName = JSON.parse(attestation.decodedDataJson)[0].value.value;
             topicId = attestation.id;
             topicObj = {
-                topicId: topicId
+                "topicId": topicId
             };
             newUrl = window.location.href + "/" + topicName;
             topicInfo += "<li><a href='" + newUrl + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\");'>" + topicName + "</a></li>";
@@ -41872,4 +41873,4 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
 window.loadTopicList = $36bf0d2054c36b6f$var$loadTopicList;
 
 
-//# sourceMappingURL=index.85c85e73.js.map
+//# sourceMappingURL=index.2b44c5d4.js.map
