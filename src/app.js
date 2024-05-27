@@ -173,55 +173,86 @@ const callCreateAttestation = async (schemaId) => {
     document.getElementById("New" + schemaId).toggleAttribute("hidden");
 }
 
-let map = {
+let chains = {
+    "0xaa36a7": {
+        "name": "Sepolia",
+        "altId": "11155111",
+        "Id": "0xaa36a7",
+        "graphEndpoint": "https://sepolia.easscan.org/graphql",
+        "rpcEndpoint": "",
+        "rootTopic": "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce"
+    },
+};
+let chainsName = {
+    "sepolia": "0xaa36a7",
+};
+let chainsAltId = {
     "11155111": "0xaa36a7",
-    "0xaa36a7": "0xaa36a7",
-    "sepolia": "0xaa36a7"
 };
 
-function getChainId(theString) {
-    return map[theString];
+function getChainIdFromName(name) {
+    return chainsName[name.toLowerCase()];
+}
+
+function getChainNameFromId(id) {
+    return chains[id].name;
+}
+
+function getChain(id) {
+    return chains[id];
+}
+
+function getChainIdFromUserInput(input) {
+    input = input.toLowerCase().trim();
+    return chainsName[input] || chains[input]?.Id || chainsAltId[input];
 }
 
 document.addEventListener("DOMContentLoaded", (event) => {
 
     let topicId = "";
     
-    let url = new URL(window.location.href);
-    let pathSegments = url.hash.split('/').filter(segment => segment !== '');
+    let topicSegments = location.hash.split('/').filter(segment => segment !== '' && !segment.startsWith('#'));
+
+    let chainInput = (location.hash.split('/').filter(segment => segment.startsWith('#'))[0] ?? "").substring(1);
+    let currentChainId = getChainIdFromUserInput(chainInput);
+    let chainHash = "";
+    if (currentChainId === undefined) {
+        console.error(`Unknown chain: "${chainInput}"`);
+        // default to Sepolia
+        currentChainId = "0xaa36a7";
+        chainHash = "#sepolia";
+    } else {
+        chainHash = "#" + getChainNameFromId(currentChainId).toLowerCase();
+    }
+    
+    let url = new URL(location.href);
+    url.hash = '';
+    let cleanUrl = url + chainHash + "/" + topicSegments.join('/');
+
+    // console.log(`rawSegments `, location.hash.split('/'));
+    // console.log(`topicSegments `, topicSegments);
+    // console.log(`chainInput `, chainInput);
+    // console.log(`currentChainId `, currentChainId);
+    // console.log(`chainHash `, chainHash);
+    // console.log(`rawUrl `, url);
+    // console.log(`cleanUrl `, cleanUrl);
 
     (async function() {
-        if (pathSegments.length === 0) {
-            currentChainId = "0xaa36a7"; // default to Sepolia
-            topicId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce"; // root topic for Sepolia
-            console.log(`Loading defaults ${currentChainId} ${topicId}`);
+        if (topicSegments.length === 0) {
+            topicId = chains[currentChainId].rootTopic;
         } else {
-            pathSegments.forEach(segment => {
-                if (segment.startsWith('#')) {
-                    currentChainId = getChainId(segment.substring(1).toLocaleLowerCase());
-                    if (currentChainId === undefined) {
-                        console.log(`Unknown chain id ${segment}`);
-                        currentChainId = "0xaa36a7";
-                    }
-                    pathSegments = pathSegments.filter(segment => !segment.startsWith('#'));
-                }
-            });
-            topicId = await topicPathToId(pathSegments);
+            topicId = await topicPathToId(topicSegments);
+            //console.log(`Calling topicPathToId `, topicSegments);
         }
-
-        history.replaceState({ "topicId": topicId}, "", document.location.href);
+        history.replaceState({"topicId": topicId}, "", cleanUrl);
         loadTopic(topicId);
+        //console.log(`Loading topic ${topicId}`);
     })();
 });
 
 window.addEventListener("popstate", (event) => {
-    // If a state has been provided, we have a "simulated" page
-    // and we update the current page.
     console.log(`popstate `, event);
     if (event.state) {
-        // Simulate the loading of the previous page
-        console.log(event.state);
-        console.log(event);
         let topic = event.state.topicId;
         console.log(`Loading topic ${topic}`);
         loadTopic(topic);
