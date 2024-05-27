@@ -41688,6 +41688,7 @@ window.replyToMessage = async (msgId, message)=>{
     console.log("New attestation UID:", newAttestationUID);
 };
 const $36bf0d2054c36b6f$var$getParentTopics = async (parentId)=>{
+    //console.log("Getting parent topics for", parentId);
     const query = `
         query Attestation($where: AttestationWhereUniqueInput!) {
             attestation(where: $where) {
@@ -41725,9 +41726,49 @@ const $36bf0d2054c36b6f$var$getParentTopics = async (parentId)=>{
     return topics;
 };
 window.getParentTopics = $36bf0d2054c36b6f$var$getParentTopics;
+let $36bf0d2054c36b6f$var$topicCache = {};
+const $36bf0d2054c36b6f$var$topicIdToName = async (topicId)=>{
+    let topicName = $36bf0d2054c36b6f$var$topicCache[topicId];
+    if (topicName == null) {
+        console.log(`topicIdToName miss for ${topicId}`);
+        const query = `
+            query Attestation($where: AttestationWhereUniqueInput!) {
+                attestation(where: $where) {
+                    decodedDataJson
+                    refUID
+                }
+            }
+        `;
+        const variables = {
+            where: {
+                id: topicId
+            }
+        };
+        const response = await fetch($36bf0d2054c36b6f$var$endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                query: query,
+                variables: variables
+            })
+        });
+        const data = await response.json();
+        topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
+        let parentId = data.data.attestation.refUID;
+        $36bf0d2054c36b6f$var$topicCache[topicId] = topicName;
+        $36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName] = topicId;
+    }
+    return topicName;
+};
+window.topicIdToName = $36bf0d2054c36b6f$var$topicIdToName;
 const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
     let topicId = "";
+    topicName = topicName.toLowerCase();
     if (parentId == null) parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
+    if ($36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName] != null) return $36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName];
+    else console.log(`topicNameToId cache miss for ${parentId}/${topicName}`);
     const query = `
         query FindFirstAttestation($where: AttestationWhereInput) {
             findFirstAttestation(where: $where) {
@@ -41744,7 +41785,7 @@ const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
                 equals: parentId
             },
             decodedDataJson: {
-                contains: topicName.toLowerCase()
+                contains: topicName
             }
         }
     };
@@ -41760,7 +41801,9 @@ const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
     });
     const data = await response.json();
     topicId = data.data.findFirstAttestation.id;
-    console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
+    //console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
+    $36bf0d2054c36b6f$var$topicCache[topicId] = topicName;
+    $36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName] = topicId;
     return topicId;
 };
 window.topicNameToId = $36bf0d2054c36b6f$var$topicNameToId;
@@ -41772,6 +41815,7 @@ const $36bf0d2054c36b6f$var$topicPathToId = async (topics)=>{
         topicId = await $36bf0d2054c36b6f$var$topicNameToId(topics[i], parentId);
         parentId = topicId;
     }
+    //console.log(`Topic path ${topics} is ${topicId}`);
     return topicId;
 };
 window.topicPathToId = $36bf0d2054c36b6f$var$topicPathToId;
@@ -41806,11 +41850,20 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
     });
     const data = await response.json();
     var topicInfo;
+    var topicName;
+    var topicId;
+    var newUrl;
     if (data.data.attestations.length == 0) topicInfo = "<p>No topics found</p>";
     else {
         topicInfo = "<ul>";
         data.data.attestations.forEach((attestation)=>{
-            topicInfo += "<li><a href='#' onclick='loadTopic(\"" + attestation.id + "\");'>" + JSON.parse(attestation.decodedDataJson)[0].value.value + "</a></li>";
+            topicName = JSON.parse(attestation.decodedDataJson)[0].value.value;
+            topicId = attestation.id;
+            topicObj = {
+                topicId: topicId
+            };
+            newUrl = window.location.href + "/" + topicName;
+            topicInfo += "<li><a href='" + newUrl + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\");'>" + topicName + "</a></li>";
         });
         topicInfo += "</ul>";
     }
@@ -41819,4 +41872,4 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId)=>{
 window.loadTopicList = $36bf0d2054c36b6f$var$loadTopicList;
 
 
-//# sourceMappingURL=index.8b3c40b1.js.map
+//# sourceMappingURL=index.85c85e73.js.map

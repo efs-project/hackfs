@@ -57,8 +57,14 @@ let schemas = {
         ]
     }
 };
+const gotoTopic = async (topicId)=>{
+    history.pushState({
+        "topicId": topicId
+    }, "", window.location.href + "/" + await topicIdToName(topicId));
+    loadTopic(topicId);
+};
 const loadTopic = async (topicId)=>{
-    //history.pushState({topicId: topicId}, "", "/" + topicId);
+    document.getElementById("topicPath").innerHTML = "Loading...";
     document.getElementById("app").innerHTML = "";
     Object.keys(schemas).forEach((schemaId)=>{
         let schemaView = document.createElement("div");
@@ -133,7 +139,6 @@ const callCreateAttestation = async (schemaId)=>{
     let data = {};
     let inputs = document.querySelectorAll(`#New${schemaId} input`);
     inputs.forEach((input)=>{
-        console.log(input.value);
         if (input.type === "checkbox") {
             data[input.id] = input.checked;
             input.checked = false;
@@ -154,18 +159,45 @@ function getChainId(theString) {
     return map[theString];
 }
 document.addEventListener("DOMContentLoaded", (event)=>{
+    let topicId = "";
     let url = new URL(window.location.href);
     let pathSegments = url.hash.split("/").filter((segment)=>segment !== "");
-    pathSegments.forEach((segment)=>{
-        if (segment.startsWith("#")) {
-            currentChainId = getChainId(segment.substring(1).toLocaleLowerCase());
-            pathSegments = pathSegments.filter((segment)=>!segment.startsWith("#"));
+    (async function() {
+        if (pathSegments.length === 0) {
+            currentChainId = "0xaa36a7"; // default to Sepolia
+            topicId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce"; // root topic for Sepolia
+            console.log(`Loading defaults ${currentChainId} ${topicId}`);
+        } else {
+            pathSegments.forEach((segment)=>{
+                if (segment.startsWith("#")) {
+                    currentChainId = getChainId(segment.substring(1).toLocaleLowerCase());
+                    if (currentChainId === undefined) {
+                        console.log(`Unknown chain id ${segment}`);
+                        currentChainId = "0xaa36a7";
+                    }
+                    pathSegments = pathSegments.filter((segment)=>!segment.startsWith("#"));
+                }
+            });
+            topicId = await topicPathToId(pathSegments);
         }
-    });
-    console.log(pathSegments);
-    topicPathToId(pathSegments).then((topicId)=>{
+        history.replaceState({
+            "topicId": topicId
+        }, "", document.location.href);
         loadTopic(topicId);
-    });
+    })();
+});
+window.addEventListener("popstate", (event)=>{
+    // If a state has been provided, we have a "simulated" page
+    // and we update the current page.
+    console.log(`popstate `, event);
+    if (event.state) {
+        // Simulate the loading of the previous page
+        console.log(event.state);
+        console.log(event);
+        let topic = event.state.topicId;
+        console.log(`Loading topic ${topic}`);
+        loadTopic(topic);
+    }
 });
 
-//# sourceMappingURL=index.62c09851.js.map
+//# sourceMappingURL=index.3db6400f.js.map
