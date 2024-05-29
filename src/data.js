@@ -97,7 +97,7 @@ const createAttestation = async (schemaUID, data, refUID) => {
 }
 window.createAttestation = createAttestation;
 
-const loadProperties = async (topicId) => {
+const loadProperties = async (topicId, editor) => {
     const query = `
         query Attestations($where: AttestationWhereInput) {
             attestations(where: $where) {
@@ -106,6 +106,7 @@ const loadProperties = async (topicId) => {
             }
         }
     `;
+
     const variables = {
         where: {
             schemaId: {
@@ -113,9 +114,16 @@ const loadProperties = async (topicId) => {
             },
             refUID: {
                 "equals": topicId
-            }
+            },
         }
     };
+    if (editor) {
+        variables.where.attester = { "equals": editor };
+        console.log("Filtering by editor", editor);
+    } else {
+        console.log("Not filtering by editor");
+    }
+
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,14 +173,14 @@ const getNumMessages = async (topicId) => {
 }
 window.getNumMessages = getNumMessages;
 
-const getMessagesForTopic = async (topicId, depth) => {
+const getMessagesForTopic = async (topicId, depth, editor) => {
 
     if (depth == 0) { return ""; }
     if (depth == null) { depth = 2; }
 
     const query = `
-        query Attestations($where: AttestationWhereInput) {
-            attestations(where: $where) {
+        query Attestations($where: AttestationWhereInput, $orderBy: [AttestationOrderByWithRelationInput!]) {
+            attestations(where: $where, orderBy: $orderBy) {
                 id
                 decodedDataJson
                 attester
@@ -188,9 +196,16 @@ const getMessagesForTopic = async (topicId, depth) => {
             },
             refUID: {
                 equals: topicId
-            }
-        }
+            },
+        },
+        orderBy: {
+            time: "desc"
+        },
     };
+    if (editor) {
+        variables.where.attester = { "equals": editor };
+        console.log("getMessagesForTopic filtering by editor", editor);
+    }
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -330,7 +345,11 @@ window.replyToMessage = async (msgId, message) => {
 
 const getParentTopics = async (parentId) => {
 
-    //console.log("Getting parent topics for", parentId);
+    console.log("getParentTopics ", parentId);
+
+    if (parentId == chains[pageState.chain].root) {
+        return "";
+    }
 
     const query = `
         query Attestation($where: AttestationWhereUniqueInput!) {
@@ -417,7 +436,7 @@ window.topicIdToName = topicIdToName;
 const topicNameToId = async (topicName, parentId) => {
     let topicId = "";
     topicName = topicName.toLowerCase();
-
+    
     if (parentId == null) {
         parentId = "0x6e4851b1ee4ee826a06a4514895640816b4143bf2408c33e5c1263275daf53ce";
     }
@@ -489,7 +508,10 @@ const topicPathToId = async (topics) => {
 }
 window.topicPathToId = topicPathToId;
 
-const loadTopicList = async (topicId) => {
+const loadTopicList = async (topicId, editor) => {
+
+    console.log(`loadTopicList `, topicId, editor);
+
     const query = `
         query Attestations($where: AttestationWhereInput) {
             attestations(where: $where) {
@@ -508,6 +530,10 @@ const loadTopicList = async (topicId) => {
             }
         }
     };
+    if (editor) {
+        variables.where.attester = { "equals": editor };
+        console.log("loadTopicList filtering by editor", editor);
+    }
 
     const response = await fetch(endpoint, {
         method: 'POST',
@@ -533,7 +559,7 @@ const loadTopicList = async (topicId) => {
             topicName = JSON.parse(attestation.decodedDataJson)[0].value.value;
             topicId = attestation.id;
             topicObj = { "topicId": topicId };
-            newUrl = window.location.href + "/" + topicName;
+            newUrl = window.location.href + (window.location.href.endsWith("/") ? "" : "/") + topicName;
             topicInfo += "<li><a href='" + newUrl + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\");'>" + topicName + "</a></li>";
         });
         topicInfo += "</ul>";

@@ -1,6 +1,8 @@
-var currentTopic;
-var parentTopic;
-var currentChainId;
+let pageState = {
+    "chain": "",
+    "topic": "",
+    "editor": "",
+};
 
 let schemas = {
     "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435": {
@@ -59,13 +61,22 @@ let schemas = {
     },
 };
 
-const gotoTopic = async (topicId) => {
-    history.pushState({ "topicId": topicId }, "", window.location.href + "/" + await topicIdToName(topicId));
+const gotoTopic = async (topicId, editor) => {
+    console.log(`gotoTopic `, topicId, editor);
+    if (topicId) { pageState.topic = topicId; }
+    if (editor) { pageState.editor = editor; }
+
+    let topicName = await topicIdToName(topicId);
+    if (topicName == "root") { topicName = ""; }
+    let path = window.location.href + (window.location.href.endsWith("/") ? "" : "/") + topicName;
+
+    history.pushState(pageState, "", path);
+    //(topicSegments.length > 0 ? "/" + topicSegments.join('/') : "");
     loadTopic(topicId);
 }
 
 const loadTopic = async (topicId) => {
-
+    console.log(`loadTopic `, topicId);
     document.getElementById("topicPath").innerHTML = "Loading...";
     document.getElementById("app").innerHTML = "";
     Object.keys(schemas).forEach(schemaId => {
@@ -90,9 +101,10 @@ const loadTopic = async (topicId) => {
     });
 
     document.getElementById("topicPath").innerHTML = await getParentTopics(topicId);
-    document.getElementById("List0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435").innerHTML = await loadTopicList(topicId);
+    document.getElementById("List0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435").innerHTML = await loadTopicList(topicId, pageState.editor);
 
-    let properties = await loadProperties(topicId);
+    console.log(`loadTopic `, topicId, pageState.editor);
+    let properties = await loadProperties(topicId, pageState.editor);
 
     if (properties.length === 0) {
         document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").innerHTML = "No properties found.";
@@ -116,8 +128,8 @@ const loadTopic = async (topicId) => {
         });
         document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").appendChild(table);
     };
-
-    let messages = await getMessagesForTopic(topicId, 3);
+    
+    let messages = await getMessagesForTopic(topicId, 3, pageState.editor);
     if (messages.length === 0) {
         document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = "No properties found.";
     } else {
@@ -125,7 +137,14 @@ const loadTopic = async (topicId) => {
     }
 
 
-    currentTopic = topicId;
+    pageState.topic = topicId;
+}
+
+const setEditor = async () => {
+    let editor = document.getElementById("editorInput").value;
+    console.log(`setEditor `, editor);
+    pageState.editor = editor;
+    gotoTopic(pageState.topic, editor);
 }
 
 const search = async () => {
@@ -168,7 +187,7 @@ const callCreateAttestation = async (schemaId) => {
         }
     });
 
-    createAttestation(schemaId, data, currentTopic);
+    createAttestation(schemaId, data, pageState.topic);
 
     document.getElementById("New" + schemaId).toggleAttribute("hidden");
 }
@@ -214,47 +233,52 @@ document.addEventListener("DOMContentLoaded", (event) => {
     let topicSegments = location.hash.split('/').filter(segment => segment !== '' && !segment.startsWith('#'));
 
     let chainInput = (location.hash.split('/').filter(segment => segment.startsWith('#'))[0] ?? "").substring(1);
-    let currentChainId = getChainIdFromUserInput(chainInput);
+    pageState.chain = getChainIdFromUserInput(chainInput);
     let chainHash = "";
-    if (currentChainId === undefined) {
+    if (pageState.chain === undefined) {
         console.error(`Unknown chain: "${chainInput}"`);
         // default to Sepolia
-        currentChainId = "0xaa36a7";
+        pageState.chain = "0xaa36a7";
         chainHash = "#sepolia";
     } else {
-        chainHash = "#" + getChainNameFromId(currentChainId).toLowerCase();
+        chainHash = "#" + getChainNameFromId(pageState.chain).toLowerCase();
     }
     
     let url = new URL(location.href);
     url.hash = '';
     let cleanUrl = url + chainHash + "/" + topicSegments.join('/');
 
+    //FIXME remove trailing slash if topicSegments is empty
+    
+
     // console.log(`rawSegments `, location.hash.split('/'));
     // console.log(`topicSegments `, topicSegments);
     // console.log(`chainInput `, chainInput);
-    // console.log(`currentChainId `, currentChainId);
+    // console.log(`pageState.chain `, pageState.chain);
     // console.log(`chainHash `, chainHash);
     // console.log(`rawUrl `, url);
     // console.log(`cleanUrl `, cleanUrl);
 
     (async function() {
         if (topicSegments.length === 0) {
-            topicId = chains[currentChainId].rootTopic;
+            pageState.topic = chains[pageState.chain].rootTopic;
         } else {
-            topicId = await topicPathToId(topicSegments);
+            pageState.topic = await topicPathToId(topicSegments);
             //console.log(`Calling topicPathToId `, topicSegments);
         }
-        history.replaceState({"topicId": topicId}, "", cleanUrl);
-        loadTopic(topicId);
-        //console.log(`Loading topic ${topicId}`);
+
+        history.replaceState(pageState, "", cleanUrl);
+        loadTopic(pageState.topic);
+        //console.log(`Loading topic ${pageState.topic}`);
     })();
 });
 
 window.addEventListener("popstate", (event) => {
     console.log(`popstate `, event);
     if (event.state) {
-        let topic = event.state.topicId;
-        console.log(`Loading topic ${topic}`);
+        console.log(`popstate event.state`, event.state);
+        let topic = event.state.topic;
+        //console.log(`Loading topic ${topic}`);
         loadTopic(topic);
     }
   });
