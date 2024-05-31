@@ -41,7 +41,43 @@ const setupEAS = async () => {
 
     eas = new EAS(EASContractAddress);
     eas.connect(signer);
+
 }
+
+const ensProvider = ethers.getDefaultProvider();
+const ensCache = {};
+const inFlightLookups = {};
+
+async function ensLookup(address) {
+    let ensName = "";
+
+    try {
+        //console.log(`Looking up ENS name for address ${address}`);
+        if (ensCache[address]) {
+            //console.log(`The cached ENS name for address ${address} is ${ensCache[address]}`);
+            return ensCache[address];
+        }
+        if (inFlightLookups[address]) {
+            //console.log(`Waiting for in-flight ENS name lookup for address ${address}`);
+            ensName = await inFlightLookups[address];
+        } else {
+            //console.log(`No cached ENS name found for address ${address}`);
+            inFlightLookups[address] = ensProvider.lookupAddress(address);
+            ensName = await inFlightLookups[address];
+            delete inFlightLookups[address];
+            if (ensName) {
+                ensCache[address] = ensName;
+                console.log(`The ENS name for address ${address} is ${ensName}`);
+            } else {
+                console.log(`No ENS name found for address ${address}`);
+            }
+        }
+    } catch (error) {
+        console.error(`Failed to lookup ENS name: ${error}`);
+    }
+    return ensName;
+}
+window.ensLookup = ensLookup;
 
 const createAttestation = async (schemaUID, data, refUID) => {
 
@@ -220,7 +256,7 @@ const getMessagesForTopic = async (topicId, depth, editor) => {
     for (let i = 0; i < data.data.attestations.length; i++) {
         let attestation = data.data.attestations[i];
         let time = new Date(attestation.time * 1000);
-        let msgInfo = time.toLocaleString() + " by <span class='address'>" + attestation.attester;
+        let msgInfo = time.toLocaleString() + " by <span class='ethAddress'>" + attestation.attester + "</span>";
         let messageBody = JSON.parse(attestation.decodedDataJson)[0].value.value;
         let actReply = "[<a href='#' onclick='document.getElementById(\"replyBox" + attestation.id + "\").style.display = \"inline\"'>Reply</a>] <span class='replyBox' id='replyBox" + attestation.id + "'><input id=\"replyInput" + attestation.id + "\" type=\"text\"> <button onclick=\"replyToMessage('" + attestation.id + "', document.getElementById('replyInput" + attestation.id + "').value); document.getElementById('replyBox" + attestation.id + "').style.display = 'none';\">Reply</button></span>";
         let actReact = "[React]";

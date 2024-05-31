@@ -2,6 +2,7 @@ let pageState = {
     "chain": "",
     "topic": "",
     "editor": "",
+    "filters": [],
 };
 
 let schemas = {
@@ -117,6 +118,7 @@ const loadTopic = async (topicId) => {
             let cell1 = document.createElement("td");
             cell1.textContent = property.decodedDataJson[0].value.value;
             cell1.classList.add("propName");
+            cell1.id = property.id;
             row.appendChild(cell1);
 
             let cell2 = document.createElement("td");
@@ -135,6 +137,16 @@ const loadTopic = async (topicId) => {
     } else {
         document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = messages;
     }
+    
+    // Use ENS for addresses
+    setTimeout(() => {
+        document.querySelectorAll("span.ethAddress").forEach(span => {
+            ensLookup(span.textContent).then(ensName => {
+                span.innerHTML = `<span title="${span.textContent}">${ensName ? ensName : span.textContent}</span>`;
+            });
+        });
+    }, 1000);
+    
 
 
     pageState.topic = topicId;
@@ -150,6 +162,29 @@ const setEditor = async () => {
 const search = async () => {
     var topic = document.getElementById("search").value;
     loadTopic(topic);
+}
+
+const toggleFilter = async (filter) => {
+
+    let filterValue = document.getElementById(filter).checked;
+    console.log(`toggleFilter `, filter, filterValue);
+
+    // change pageState.filters, if filter is not in the array, add it, if it is, remove it
+    if (filterValue) {
+        if (!pageState.filters.includes(filter)) {
+            pageState.filters.push(filter);
+        }
+    } else {
+        const index = pageState.filters.indexOf(filter);
+        if (index !== -1) {
+            pageState.filters.splice(index, 1);
+        }
+    }
+
+    loadTopic(pageState.topic);
+
+
+    //pageState.filters.includes(filter) ? pageState.filters.splice(pageState.filters.indexOf(filter), 1) : pageState.filters.push(filter);
 }
 
 const openAttestationEditor = async (schemaId) => {
@@ -248,7 +283,17 @@ document.addEventListener("DOMContentLoaded", (event) => {
     url.hash = '';
     let cleanUrl = url + chainHash + "/" + topicSegments.join('/');
 
-    //FIXME remove trailing slash if topicSegments is empty
+    // popuplate pageState.filters with checkbox values from id=filters
+    let filters = document.getElementById("filters");
+    if (filters) {
+        filters.querySelectorAll("input").forEach(filter => {
+            if (filter.checked) {
+                pageState.filters.push(filter.id);
+                console.log(`Adding filter `, filter.id);
+            }
+        });
+    }
+
     
 
     // console.log(`rawSegments `, location.hash.split('/'));
