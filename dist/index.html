@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Ethereum File System (EFS) HackFS Prototype</title>
+    <link rel="stylesheet" type="text/css" href="index.e9d261e7.css">
+    <script src="index.a4eb038b.js"></script>
+    <script type="module" src="index.90ff5a9b.js"></script>
+</head>
+
+<body>
+    <div id="topicHeader">
+        <h1 id="topicPath">EFS Topic Browser</h1>
+        <p>
+            Editor: <input id="editorInput" type="text"> <button id="editorButton" onclick="setEditor();">View</button>
+            Go to topic: <input id="search" type="text"> <button id="go" onclick="search();">Go</button>
+            <span id="filters">
+                Filters:
+                <label for="nsfw">NSFW</label><input type="checkbox" id="nsfw" checked="" onclick="toggleFilter('nsfw');">
+                <label for="nsfl">NSFL</label><input type="checkbox" id="nsfl" checked="" onclick="toggleFilter('nsfl');">
+            </span>
+        </p>
+    </div>
+    <div id="app"></div>
+</body>
+
+</html>
