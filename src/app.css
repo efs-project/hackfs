@@ -1,6 +1,7 @@
 body {
     margin: 0px;
     padding: 0px;
+    font-family: 'Arial', sans-serif;
 }
 
 #topicHeader {
@@ -54,7 +55,6 @@ span.messageActions {
 
 .propName {
     font-weight: bold;
-}
-.propName::after {
-    content: " =";
+    text-align: right;
+    padding-right: 1em;
 }

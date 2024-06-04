@@ -256,7 +256,7 @@ const getMessagesForTopic = async (topicId, depth, editor) => {
     for (let i = 0; i < data.data.attestations.length; i++) {
         let attestation = data.data.attestations[i];
         let time = new Date(attestation.time * 1000);
-        let msgInfo = time.toLocaleString() + " by <span class='ethAddress'>" + attestation.attester + "</span>";
+        let msgInfo = "<span class='ethAddress'>" + attestation.attester + "</span> at " + time.toLocaleString();
         let messageBody = JSON.parse(attestation.decodedDataJson)[0].value.value;
         let actReply = "[<a href='#' onclick='document.getElementById(\"replyBox" + attestation.id + "\").style.display = \"inline\"'>Reply</a>] <span class='replyBox' id='replyBox" + attestation.id + "'><input id=\"replyInput" + attestation.id + "\" type=\"text\"> <button onclick=\"replyToMessage('" + attestation.id + "', document.getElementById('replyInput" + attestation.id + "').value); document.getElementById('replyBox" + attestation.id + "').style.display = 'none';\">Reply</button></span>";
         let actReact = "[React]";

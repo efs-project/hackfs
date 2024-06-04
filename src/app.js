@@ -145,7 +145,7 @@ const loadTopic = async (topicId) => {
                 span.innerHTML = `<span title="${span.textContent}">${ensName ? ensName : span.textContent}</span>`;
             });
         });
-    }, 1000);
+    }, 10);
     
 
 
