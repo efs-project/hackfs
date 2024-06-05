@@ -217,7 +217,8 @@ function getChainIdFromUserInput(input) {
     input = input.toLowerCase().trim();
     return chainsName[input] || chains[input]?.Id || chainsAltId[input];
 }
-document.addEventListener("DOMContentLoaded", (event)=>{
+//document.addEventListener("DOMContentLoaded", (event) => {
+window.addEventListener("load", (event)=>{
     let topicId = "";
     let topicSegments = location.hash.split("/").filter((segment)=>segment !== "" && !segment.startsWith("#"));
     let chainInput = (location.hash.split("/").filter((segment)=>segment.startsWith("#"))[0] ?? "").substring(1);
@@ -265,4 +266,4 @@ window.addEventListener("popstate", (event)=>{
     }
 });
 
-//# sourceMappingURL=index.a4eb038b.js.map
+//# sourceMappingURL=index.64fad250.js.map

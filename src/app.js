@@ -261,8 +261,8 @@ function getChainIdFromUserInput(input) {
     return chainsName[input] || chains[input]?.Id || chainsAltId[input];
 }
 
-document.addEventListener("DOMContentLoaded", (event) => {
-
+//document.addEventListener("DOMContentLoaded", (event) => {
+window.addEventListener("load", (event) => {
     let topicId = "";
     
     let topicSegments = location.hash.split('/').filter(segment => segment !== '' && !segment.startsWith('#'));
