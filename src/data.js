@@ -1,14 +1,13 @@
 import { EAS, Offchain, SchemaEncoder, SchemaRegistry } from "@ethereum-attestation-service/eas-sdk";
 import { ethers } from 'ethers';
 
-export const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; // Sepolia v0.26
 
+let signer = null;
+let provider = null;
+let eas = null;
 
+const EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e";
 const endpoint = 'https://sepolia.easscan.org/graphql';
-
-let signer;
-let provider;
-let eas;
 
 const setupEAS = async () => {
 
@@ -44,7 +43,12 @@ const setupEAS = async () => {
 
 }
 
-const ensProvider = ethers.getDefaultProvider();
+let ensProvider = null;
+try {
+    ensProvider = ethers.getDefaultProvider();
+} catch (error) {
+    console.error(`Failed to initialize ENS provider: ${error}`);
+}
 const ensCache = {};
 const inFlightLookups = {};
 
@@ -379,65 +383,43 @@ window.replyToMessage = async (msgId, message) => {
     console.log("New attestation UID:", newAttestationUID);
 }
 
-const getParentTopics = async (parentId) => {
+const getParentTopics = async (topicId) => {
+    console.log("getParentTopics ", topicId);
 
-    console.log("getParentTopics ", parentId);
-
-    if (parentId == chains[pageState.chain].root) {
+    if (topicId == chains[pageState.chain].root) {
         return "";
     }
 
-    const query = `
-        query Attestation($where: AttestationWhereUniqueInput!) {
-            attestation(where: $where) {
-                decodedDataJson
-                refUID
-                id
-            }
-        }
-    `;
-
-    const variables = {
-        where: {
-            id: parentId
-        }
-    };
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
+    let topic = await getTopic(topicId);
 
     var topics = "";
     var topicName = "";
-    var topicId = "";
-    const data = await response.json();
-    var parent = data.data.attestation.refUID;
 
-    topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value
-    topicId = data.data.attestation.id;
+    topicName = topic.name;
 
-    if (parent != '0x0000000000000000000000000000000000000000000000000000000000000000') {
-        topics += await getParentTopics(parent);
+    if (topic.parentId != '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        topics += await getParentTopics(topic.parentId);
     } else {
         topicName = "Sepolia";
     }
 
-    topics += "<a href='#' onclick='loadTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
+    let topicPath = await getTopicPath(topicId);
+
+    topics += "<a href='" + basePath + topicPath + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
 
     return topics;
 };
 window.getParentTopics = getParentTopics;
 
-let topicCache = {};
-const topicIdToName = async (topicId) => {
-    let topicName = topicCache[topicId];
-    if (topicName == null) {
-        console.log(`topicIdToName miss for ${topicId}`);
+const getTopic = async (topicId) => {
+
+    if (topicId == "0x0000000000000000000000000000000000000000000000000000000000000000" || !topicId) {
+        return "";
+    }
+
+    let topic = topicCache[topicId];
+    if (!topic) {
+        console.log(`getTopic cache miss for ${topicId}`);
         const query = `
             query Attestation($where: AttestationWhereUniqueInput!) {
                 attestation(where: $where) {
@@ -446,11 +428,13 @@ const topicIdToName = async (topicId) => {
                 }
             }
         `;
+
         const variables = {
             where: {
                 id: topicId
             }
         };
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -459,15 +443,69 @@ const topicIdToName = async (topicId) => {
                 variables: variables
             })
         });
+
         const data = await response.json();
-        topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
-        let parentId = data.data.attestation.refUID;
-        topicCache[topicId] = topicName;
-        topicCache[parentId + "/" + topicName] = topicId;
+
+        let topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value
+        let parent = data.data.attestation.refUID;
+
+        topicCache[topicId] = { "name": topicName, "parentId": parent, path: "" };
+        topicCache[parent + "/" + topicName] = topicId;
+
+        topic = topicCache[topicId];
     }
-    return topicName;
+    return topic;
+}
+window.getTopic = getTopic;
+
+const getTopicPath = async (topicId) => {
+    console.log("getTopicPath ", topicId);
+
+    if (topicId == "0x0000000000000000000000000000000000000000000000000000000000000000" || !topicId) {
+        return "";
+    }
+
+    let path = "";
+    let topic = await getTopic(topicId);
+
+    if (topic.parentId != chains[pageState.chain].root && topic.parentId != "") {
+        path += await getTopicPath(topic.parentId);
+    }
+
+    let topicName = topic.name;
+
+    if (topicName == "root") {
+        topicName = "#sepolia";
+    }
+
+    path += topicName + "/";
+
+    topicCache[topicId].path = path;
+
+    return path;
+};
+window.getTopicPath = getTopicPath;
+
+
+let topicCache = {};
+const topicIdToName = async (topicId) => {
+    let topic = await getTopic(topicId);
+    if (topic) {
+        return topic.name;
+    } else {
+        return null;
+    }
 }
 window.topicIdToName = topicIdToName;
+
+const topicIdToPath = async (topicId) => {
+    let topicPath = "";
+    let topicName = await topicIdToName(topicId);
+
+
+
+    return topicPath;
+}
 
 const topicNameToId = async (topicName, parentId) => {
     let topicId = "";
@@ -518,7 +556,7 @@ const topicNameToId = async (topicName, parentId) => {
 
     //console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
 
-    topicCache[topicId] = topicName;
+    topicCache[topicId] = { "name": topicName, "parentId": parentId, path: "" };
     topicCache[parentId + "/" + topicName] = topicId;
 
     return topicId;
