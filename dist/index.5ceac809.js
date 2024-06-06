@@ -41377,11 +41377,11 @@ $frFmb.__exportStar((parcelRequire("iP0fL")), $0940800ee35e7667$exports);
  */ parcelRequire("ieLZX");parcelRequire("iL2uz");parcelRequire("bJQ25");parcelRequire("lz4De");parcelRequire("aGa5Q");parcelRequire("243vt");parcelRequire("7hArd");parcelRequire("34MF4");parcelRequire("dEvh9");parcelRequire("iO31r");parcelRequire("cLhV1");parcelRequire("l7Jve");parcelRequire("lDRbx");parcelRequire("lQMQS");parcelRequire("ieVP5");
 
 
-const $36bf0d2054c36b6f$export$acccfb182123bb79 = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e"; // Sepolia v0.26
+let $36bf0d2054c36b6f$var$signer = null;
+let $36bf0d2054c36b6f$var$provider = null;
+let $36bf0d2054c36b6f$var$eas = null;
+const $36bf0d2054c36b6f$var$EASContractAddress = "0xC2679fBD37d54388Ce493F1DB75320D236e1815e";
 const $36bf0d2054c36b6f$var$endpoint = "https://sepolia.easscan.org/graphql";
-let $36bf0d2054c36b6f$var$signer;
-let $36bf0d2054c36b6f$var$provider;
-let $36bf0d2054c36b6f$var$eas;
 const $36bf0d2054c36b6f$var$setupEAS = async ()=>{
     if ($36bf0d2054c36b6f$var$eas !== undefined) return $36bf0d2054c36b6f$var$eas;
     if (window.ethereum == null) {
@@ -41404,10 +41404,15 @@ const $36bf0d2054c36b6f$var$setupEAS = async ()=>{
         ]
     });
     $36bf0d2054c36b6f$var$signer = await $36bf0d2054c36b6f$var$provider.getSigner();
-    $36bf0d2054c36b6f$var$eas = new (0, $0940800ee35e7667$exports.EAS)($36bf0d2054c36b6f$export$acccfb182123bb79);
+    $36bf0d2054c36b6f$var$eas = new (0, $0940800ee35e7667$exports.EAS)($36bf0d2054c36b6f$var$EASContractAddress);
     $36bf0d2054c36b6f$var$eas.connect($36bf0d2054c36b6f$var$signer);
 };
-const $36bf0d2054c36b6f$var$ensProvider = (0, $59626035186411fd$re_export$ethers).getDefaultProvider();
+let $36bf0d2054c36b6f$var$ensProvider = null;
+try {
+    $36bf0d2054c36b6f$var$ensProvider = (0, $59626035186411fd$re_export$ethers).getDefaultProvider();
+} catch (error) {
+    console.error(`Failed to initialize ENS provider: ${error}`);
+}
 const $36bf0d2054c36b6f$var$ensCache = {};
 const $36bf0d2054c36b6f$var$inFlightLookups = {};
 async function $36bf0d2054c36b6f$var$ensLookup(address) {
@@ -41729,51 +41734,25 @@ window.replyToMessage = async (msgId, message)=>{
     const newAttestationUID = await tx.wait();
     console.log("New attestation UID:", newAttestationUID);
 };
-const $36bf0d2054c36b6f$var$getParentTopics = async (parentId)=>{
-    console.log("getParentTopics ", parentId);
-    if (parentId == chains[pageState.chain].root) return "";
-    const query = `
-        query Attestation($where: AttestationWhereUniqueInput!) {
-            attestation(where: $where) {
-                decodedDataJson
-                refUID
-                id
-            }
-        }
-    `;
-    const variables = {
-        where: {
-            id: parentId
-        }
-    };
-    const response = await fetch($36bf0d2054c36b6f$var$endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            query: query,
-            variables: variables
-        })
-    });
+const $36bf0d2054c36b6f$var$getParentTopics = async (topicId)=>{
+    console.log("getParentTopics ", topicId);
+    if (topicId == chains[pageState.chain].root) return "";
+    let topic = await $36bf0d2054c36b6f$var$getTopic(topicId);
     var topics = "";
     var topicName = "";
-    var topicId = "";
-    const data = await response.json();
-    var parent = data.data.attestation.refUID;
-    topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
-    topicId = data.data.attestation.id;
-    if (parent != "0x0000000000000000000000000000000000000000000000000000000000000000") topics += await $36bf0d2054c36b6f$var$getParentTopics(parent);
+    topicName = topic.name;
+    if (topic.parentId != "0x0000000000000000000000000000000000000000000000000000000000000000") topics += await $36bf0d2054c36b6f$var$getParentTopics(topic.parentId);
     else topicName = "Sepolia";
-    topics += "<a href='#' onclick='loadTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
+    let topicPath = await $36bf0d2054c36b6f$var$getTopicPath(topicId);
+    topics += "<a href='" + basePath + topicPath + "' onclick='event.preventDefault(); gotoTopic(\"" + topicId + "\")'>" + topicName + "</a>/";
     return topics;
 };
 window.getParentTopics = $36bf0d2054c36b6f$var$getParentTopics;
-let $36bf0d2054c36b6f$var$topicCache = {};
-const $36bf0d2054c36b6f$var$topicIdToName = async (topicId)=>{
-    let topicName = $36bf0d2054c36b6f$var$topicCache[topicId];
-    if (topicName == null) {
-        console.log(`topicIdToName miss for ${topicId}`);
+const $36bf0d2054c36b6f$var$getTopic = async (topicId)=>{
+    if (topicId == "0x0000000000000000000000000000000000000000000000000000000000000000" || !topicId) return "";
+    let topic = $36bf0d2054c36b6f$var$topicCache[topicId];
+    if (!topic) {
+        console.log(`getTopic cache miss for ${topicId}`);
         const query = `
             query Attestation($where: AttestationWhereUniqueInput!) {
                 attestation(where: $where) {
@@ -41798,14 +41777,44 @@ const $36bf0d2054c36b6f$var$topicIdToName = async (topicId)=>{
             })
         });
         const data = await response.json();
-        topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
-        let parentId = data.data.attestation.refUID;
-        $36bf0d2054c36b6f$var$topicCache[topicId] = topicName;
-        $36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName] = topicId;
+        let topicName = JSON.parse(data.data.attestation.decodedDataJson)[0].value.value;
+        let parent = data.data.attestation.refUID;
+        $36bf0d2054c36b6f$var$topicCache[topicId] = {
+            "name": topicName,
+            "parentId": parent,
+            path: ""
+        };
+        $36bf0d2054c36b6f$var$topicCache[parent + "/" + topicName] = topicId;
+        topic = $36bf0d2054c36b6f$var$topicCache[topicId];
     }
-    return topicName;
+    return topic;
+};
+window.getTopic = $36bf0d2054c36b6f$var$getTopic;
+const $36bf0d2054c36b6f$var$getTopicPath = async (topicId)=>{
+    console.log("getTopicPath ", topicId);
+    if (topicId == "0x0000000000000000000000000000000000000000000000000000000000000000" || !topicId) return "";
+    let path = "";
+    let topic = await $36bf0d2054c36b6f$var$getTopic(topicId);
+    if (topic.parentId != chains[pageState.chain].root && topic.parentId != "") path += await $36bf0d2054c36b6f$var$getTopicPath(topic.parentId);
+    let topicName = topic.name;
+    if (topicName == "root") topicName = "#sepolia";
+    path += topicName + "/";
+    $36bf0d2054c36b6f$var$topicCache[topicId].path = path;
+    return path;
+};
+window.getTopicPath = $36bf0d2054c36b6f$var$getTopicPath;
+let $36bf0d2054c36b6f$var$topicCache = {};
+const $36bf0d2054c36b6f$var$topicIdToName = async (topicId)=>{
+    let topic = await $36bf0d2054c36b6f$var$getTopic(topicId);
+    if (topic) return topic.name;
+    else return null;
 };
 window.topicIdToName = $36bf0d2054c36b6f$var$topicIdToName;
+const $36bf0d2054c36b6f$var$topicIdToPath = async (topicId)=>{
+    let topicPath = "";
+    let topicName = await $36bf0d2054c36b6f$var$topicIdToName(topicId);
+    return topicPath;
+};
 const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
     let topicId = "";
     topicName = topicName.toLowerCase();
@@ -41845,7 +41854,11 @@ const $36bf0d2054c36b6f$var$topicNameToId = async (topicName, parentId)=>{
     const data = await response.json();
     topicId = data.data.findFirstAttestation.id;
     //console.log(`Topic name ${parentId}/${topicName} is ${topicId}`);
-    $36bf0d2054c36b6f$var$topicCache[topicId] = topicName;
+    $36bf0d2054c36b6f$var$topicCache[topicId] = {
+        "name": topicName,
+        "parentId": parentId,
+        path: ""
+    };
     $36bf0d2054c36b6f$var$topicCache[parentId + "/" + topicName] = topicId;
     return topicId;
 };
@@ -41923,4 +41936,4 @@ const $36bf0d2054c36b6f$var$loadTopicList = async (topicId, editor)=>{
 window.loadTopicList = $36bf0d2054c36b6f$var$loadTopicList;
 
 
-//# sourceMappingURL=index.90ff5a9b.js.map
+//# sourceMappingURL=index.5ceac809.js.map

@@ -4,6 +4,7 @@ let pageState = {
     "editor": "",
     "filters": []
 };
+let basePath = "";
 let schemas = {
     "0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435": {
         "name": "topic",
@@ -64,9 +65,10 @@ const gotoTopic = async (topicId, editor)=>{
     console.log(`gotoTopic `, topicId, editor);
     if (topicId) pageState.topic = topicId;
     if (editor) pageState.editor = editor;
-    let topicName = await topicIdToName(topicId);
-    if (topicName == "root") topicName = "";
-    let path = window.location.href + (window.location.href.endsWith("/") ? "" : "/") + topicName;
+    let path = basePath + await getTopicPath(topicId);
+    // let topicName = await topicIdToName(topicId);
+    // if (topicName == "root") { topicName = ""; }
+    // let path = window.location.href + (window.location.href.endsWith("/") ? "" : "/") + topicName;
     history.pushState(pageState, "", path);
     //(topicSegments.length > 0 ? "/" + topicSegments.join('/') : "");
     loadTopic(topicId);
@@ -102,10 +104,8 @@ const loadTopic = async (topicId)=>{
     document.getElementById("List0xddc07ff085923cb9a3c58bf684344b7672881e5a004044e3e99527861fed6435").innerHTML = await loadTopicList(topicId, pageState.editor);
     console.log(`loadTopic `, topicId, pageState.editor);
     let properties = await loadProperties(topicId, pageState.editor);
-    if (properties.length === 0) {
-        document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").innerHTML = "No properties found.";
-        return;
-    } else {
+    if (properties.length === 0) document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").innerHTML = "No properties found.";
+    else {
         let table = document.createElement("table");
         properties.forEach((property)=>{
             let row = document.createElement("tr");
@@ -123,7 +123,7 @@ const loadTopic = async (topicId)=>{
         document.getElementById("List0xe5abe9a6766fbf5944829bb25cc023cc3c7b3b2326acd9b6047cc019960e0b01").appendChild(table);
     }
     let messages = await getMessagesForTopic(topicId, 3, pageState.editor);
-    if (messages.length === 0) document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = "No properties found.";
+    if (messages == "<ul></ul>") document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = "No messages found.";
     else document.getElementById("List0x3969bb076acfb992af54d51274c5c868641ca5344e1aacd0b1f5e4f80ac0822f").innerHTML = messages;
     // Use ENS for addresses
     setTimeout(()=>{
@@ -232,6 +232,7 @@ window.addEventListener("load", (event)=>{
     } else chainHash = "#" + getChainNameFromId(pageState.chain).toLowerCase();
     let url = new URL(location.href);
     url.hash = "";
+    basePath = url.toString();
     let cleanUrl = url + chainHash + "/" + topicSegments.join("/");
     // popuplate pageState.filters with checkbox values from id=filters
     let filters = document.getElementById("filters");
@@ -266,4 +267,4 @@ window.addEventListener("popstate", (event)=>{
     }
 });
 
-//# sourceMappingURL=index.64fad250.js.map
+//# sourceMappingURL=index.2c94d411.js.map
